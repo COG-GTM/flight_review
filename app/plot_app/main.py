@@ -16,10 +16,30 @@ from config import *
 from colors import HTML_color_to_RGB
 from db_entry import *
 from configured_plots import generate_plots
+from test_card import (TestCardError, is_valid_log_uuid, load_test_card_file,
+                       test_card_filename)
 from pid_analysis_plots import get_pid_analysis_plots
 from statistics_plots import StatisticsPlots
 
 #pylint: disable=invalid-name, redefined-outer-name
+
+
+def load_test_card_for_log(log_id):
+    """
+    :return: (link to the test card page or None, parsed test card or None).
+    Only available for server-side logs identified by a UUID.
+    """
+    if not is_valid_log_uuid(log_id):
+        return None, None
+    link = 'test_card?log=' + log_id
+    card_file = test_card_filename(get_log_filepath(), log_id)
+    if not os.path.isfile(card_file):
+        return link, None
+    try:
+        return link, load_test_card_file(card_file)
+    except (TestCardError, OSError) as error:
+        print('Error loading test card for log {}: {}'.format(log_id, error))
+        return link, None
 
 
 GET_arguments = curdoc().session_context.request.arguments
@@ -228,10 +248,12 @@ else:
 
             link_to_3d_page = '3d?log='+log_id
             link_to_pid_analysis_page = '?plots=pid_analysis&log='+log_id
+            link_to_test_card_page, test_card = load_test_card_for_log(log_id)
 
             try:
                 plots = generate_plots(ulog, px4_ulog, db_data, vehicle_data,
-                                       link_to_3d_page, link_to_pid_analysis_page)
+                                       link_to_3d_page, link_to_pid_analysis_page,
+                                       link_to_test_card_page, test_card)
 
                 title = 'Flight Review - '+px4_ulog.get_mav_type()
 
