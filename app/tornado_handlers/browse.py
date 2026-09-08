@@ -7,16 +7,17 @@ import os
 import re
 from datetime import datetime
 import json
-import tornado.web
 
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from config import get_db_connection, get_overview_img_filepath
 from db_entry import DBData, DBDataGenerated
 from helper import flight_modes_table, get_airframe_data
+from security import json_for_script
 
 #pylint: disable=relative-beyond-top-level,too-many-statements
-from .common import get_jinja_env, get_generated_db_data_from_log
+from .common import get_jinja_env, get_generated_db_data_from_log, \
+    TornadoRequestHandlerBase
 
 BROWSE_TEMPLATE = 'browse.html'
 
@@ -312,7 +313,7 @@ def _get_columns_from_tuple(db_tuple, counter, all_overview_imgs, con, cur):
 
 
 #pylint: disable=abstract-method
-class BrowseDataRetrievalHandler(tornado.web.RequestHandler):
+class BrowseDataRetrievalHandler(TornadoRequestHandlerBase):
     """ Ajax data retrieval handler """
 
     def get(self, *args, **kwargs):
@@ -400,7 +401,7 @@ class DBDataJoin(DBData, DBDataGenerated):
         self.__dict__.update(source.__dict__)
 
 
-class BrowseHandler(tornado.web.RequestHandler):
+class BrowseHandler(TornadoRequestHandlerBase):
     """ Browse public log file Tornado request handler """
 
     def get(self, *args, **kwargs):
@@ -411,6 +412,6 @@ class BrowseHandler(tornado.web.RequestHandler):
 
         search_str = self.get_argument('search', '').lower()
         if len(search_str) > 0:
-            template_args['initial_search'] = json.dumps(search_str)
+            template_args['initial_search'] = json_for_script(search_str)
 
         self.write(template.render(template_args))

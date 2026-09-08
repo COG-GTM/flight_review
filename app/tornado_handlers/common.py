@@ -3,6 +3,7 @@ Common methods and classes used by several tornado handlers
 """
 
 from __future__ import print_function
+from html import escape
 import os
 import sqlite3
 import sys
@@ -14,6 +15,7 @@ import tornado.web
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from db_entry import DBDataGenerated
 from config import get_db_connection
+from audit import new_correlation_id, log_server_error
 
 #pylint: disable=abstract-method
 
@@ -26,28 +28,47 @@ def get_jinja_env():
 
 
 class CustomHTTPError(tornado.web.HTTPError):
-    """ simple class for HTTP exceptions with a custom error message """
+    """ HTTP exception with a fixed, user-facing error message. The message
+    must be a static string chosen by the handler - never exception text or
+    request data. """
     def __init__(self, status_code, error_message=None):
         self.error_message = error_message
         super().__init__(status_code, error_message)
 
 class TornadoRequestHandlerBase(tornado.web.RequestHandler):
     """
-    base class for a tornado request handler with custom error display
+    base class for a tornado request handler with generic error display:
+    the client gets the status code, an optional static message and a
+    correlation id; exception detail is only written to the server log.
     """
     def write_error(self, status_code, **kwargs):
         html_template = """
 <html><title>Error {status_code}</title>
-<body>HTTP Error {status_code}{error_message}</body>
+<body>HTTP Error {status_code}{error_message}<br/>
+Reference: {correlation_id}</body>
 </html>
 """
+        correlation_id = new_correlation_id()
         error_message = ''
-        if 'exc_info' in kwargs:
-            e = kwargs["exc_info"][1]
+        exc_info = kwargs.get('exc_info')
+        if exc_info is not None:
+            e = exc_info[1]
             if isinstance(e, CustomHTTPError) and e.error_message:
-                error_message = ': '+e.error_message
+                error_message = ': '+escape(e.error_message)
+            # client errors raised on purpose only need a one-line record;
+            # everything else gets the full traceback
+            is_client_error = isinstance(e, tornado.web.HTTPError) and status_code < 500
+            log_server_error(
+                correlation_id,
+                'HTTP {} for {} {!r}: {!r}'.format(
+                    status_code, self.request.method, self.request.path, e),
+                exc_info=None if is_client_error else exc_info)
+        else:
+            log_server_error(correlation_id, 'HTTP {} for {} {!r}'.format(
+                status_code, self.request.method, self.request.path))
         self.write(html_template.format(status_code=status_code,
-                                        error_message=error_message))
+                                        error_message=error_message,
+                                        correlation_id=correlation_id))
 
 def generate_db_data_from_log_file(log_id, db_connection=None):
     """

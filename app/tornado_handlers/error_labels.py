@@ -13,7 +13,10 @@ from config import get_db_connection
 from db_entry import *
 from helper import validate_log_id, validate_error_ids
 
-class UpdateErrorLabelHandler(tornado.web.RequestHandler):
+#pylint: disable=relative-beyond-top-level
+from .common import TornadoRequestHandlerBase
+
+class UpdateErrorLabelHandler(TornadoRequestHandlerBase):
     """ Update the error label of a flight log."""
 
     def post(self, *args, **kwargs):

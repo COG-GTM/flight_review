@@ -30,6 +30,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 
+from security import is_valid_log_id, resolve_under, InvalidLogIdError
+
 #pylint: disable=line-too-long, global-variable-not-assigned,invalid-name,global-statement
 
 def print_timing(name, start_time):
@@ -66,18 +68,25 @@ def validate_log_id(log_id):
     exists) """
     if _check_log_id_is_filename():
         return True
-    # we are a bit less restrictive than the actual format
-    if re.match(r'^[0-9a-zA-Z_-]+$', log_id):
-        return True
-    return False
+    return is_valid_log_id(log_id)
 
 def get_log_filename(log_id):
-    """ return the ulog file name from a log id in the form:
+    """ return the canonical ulog file name from a log id in the form:
         xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        raises security.InvalidLogIdError if the id is not a valid identifier
+        or the resolved path is not inside the configured log directory
     """
     if _check_log_id_is_filename():
         return log_id
-    return os.path.join(get_log_filepath(), log_id + '.ulg')
+    return get_log_derived_filename(get_log_filepath(), log_id, '.ulg')
+
+def get_log_derived_filename(base_dir, log_id, suffix):
+    """ build '<base_dir>/<log_id><suffix>' for per-log derived files (ulg,
+        kml, preview image) after validating the id and verifying the
+        canonical path stays inside base_dir """
+    if not is_valid_log_id(log_id):
+        raise InvalidLogIdError('invalid log id')
+    return resolve_under(base_dir, log_id + suffix)
 
 
 __last_failed_downloads = {} # dict with key=file name and a timestamp of last failed download

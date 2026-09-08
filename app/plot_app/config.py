@@ -41,6 +41,7 @@ __CESIUM_API_KEY = _conf.get('general', 'cesium_api_key')
 __CESIUM_ENABLE_BING_AERIAL = _conf.get('general', 'cesium_enable_bing_aerial')
 __LOG_CACHE_SIZE = int(_conf.get('general', 'log_cache_size'))
 __LOG_LOAD_TIMEOUT = int(_conf.get('general', 'log_load_timeout'))
+__MAX_UPLOAD_SIZE_MB = int(_conf.get('general', 'max_upload_size_mb', fallback='100'))
 __DB_FILENAME_CUSTOM = _conf.get('general', 'db_filename')
 
 __STORAGE_PATH = _conf.get('general', 'storage_path')
@@ -175,6 +176,10 @@ def get_log_cache_size():
 def get_log_load_timeout():
     """ get maximum seconds to spend loading a single log (0 = disabled) """
     return __LOG_LOAD_TIMEOUT
+
+def get_max_upload_size():
+    """ get maximum accepted upload request body size in bytes """
+    return __MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 def debug_print_timing():
     """ print timing information? """

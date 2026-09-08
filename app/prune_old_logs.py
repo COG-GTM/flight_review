@@ -11,7 +11,7 @@ import datetime
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'plot_app'))
 from plot_app.config import get_db_connection, get_overview_img_filepath
-from plot_app.helper import get_log_filename
+from plot_app.helper import get_log_filename, get_log_derived_filename
 
 
 parser = argparse.ArgumentParser(description='Remove old log files & DB entries')
@@ -94,7 +94,8 @@ with con:
         if os.path.exists(ulog_file_name):
             os.unlink(ulog_file_name)
         #and preview image if exist
-        preview_image_filename=os.path.join(get_overview_img_filepath(), log_id+'.png')
+        preview_image_filename = get_log_derived_filename(
+            get_overview_img_filepath(), log_id, '.png')
         if os.path.exists(preview_image_filename):
             os.unlink(preview_image_filename)
 

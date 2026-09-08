@@ -216,4 +216,15 @@ chmod u+x init-letsencrypt.sh
 Contributions are welcome! Just open a pull request with detailed description
 why the changes are needed, or open an issue for bugs, feature requests, etc...
 
-Feel free to run `./run_pylint.sh` before PR to ensure CICD checks pass on your code. 
+Feel free to run `./run_pylint.sh` before PR to ensure CICD checks pass on your code.
+
+Unit tests for the pure helper modules (`app/plot_app/security.py`,
+`app/plot_app/audit.py`, path helpers) live in `app/tests` and run with pytest:
+
+```bash
+pip install pytest
+pytest app/tests
+```
+
+The security review of the untrusted-input boundaries is documented in
+`docs/security/asd-stig-nist-800-53-review.md`.

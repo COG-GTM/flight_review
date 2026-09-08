@@ -5,6 +5,7 @@ Tornado handler for the download page
 from __future__ import print_function
 import os
 from html import escape
+import sqlite3
 import sys
 import uuid
 import shutil
@@ -14,8 +15,10 @@ from pyulog.ulog2kml import convert_ulog2kml
 
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
-from helper import get_log_filename, validate_log_id, \
+from helper import get_log_filename, get_log_derived_filename, validate_log_id, \
     flight_modes_table, load_ulog_file, get_default_parameters
+from audit import audit_log
+from security import sanitize_header_value
 
 from config import get_db_connection, get_kml_filepath
 
@@ -37,6 +40,11 @@ class DownloadHandler(TornadoRequestHandlerBase):
         if not os.path.exists(log_file_name):
             raise tornado.web.HTTPError(404, 'Log not found')
 
+        if not self.is_public_log(log_id):
+            audit_log('log_download', 'success', log_id=log_id,
+                      download_type=download_type, public=False,
+                      client_ip=self.request.remote_ip)
+
 
         def get_original_filename(default_value, new_file_suffix):
             """
@@ -53,7 +61,12 @@ class DownloadHandler(TornadoRequestHandlerBase):
                     original_file_name = escape(db_tuple[0])
                     if original_file_name[-4:].lower() == '.ulg':
                         original_file_name = original_file_name[:-4]
-                    return original_file_name + new_file_suffix
+                    # header value: no control chars, no quotes, no path parts
+                    original_file_name = sanitize_header_value(
+                        os.path.basename(original_file_name), max_length=120
+                    ).replace('"', '')
+                    if len(original_file_name) > 0:
+                        return original_file_name + new_file_suffix
             except:
                 print("DB access failed:", sys.exc_info()[0], sys.exc_info()[1])
             finally:
@@ -90,8 +103,7 @@ class DownloadHandler(TornadoRequestHandlerBase):
                 self.write('\n')
 
         elif download_type == '2': # download the kml file
-            kml_path = get_kml_filepath()
-            kml_file_name = os.path.join(kml_path, log_id.replace('/', '.')+'.kml')
+            kml_file_name = get_log_derived_filename(get_kml_filepath(), log_id, '.kml')
 
             # check if chached file exists
             if not os.path.exists(kml_file_name):
@@ -131,7 +143,8 @@ class DownloadHandler(TornadoRequestHandlerBase):
 
             # send the whole KML file
             self.set_header("Content-Type", "application/vnd.google-earth.kml+xml")
-            self.set_header('Content-Disposition', 'attachment; filename='+kml_dl_file_name)
+            self.set_header('Content-Disposition',
+                            'attachment; filename="{}"'.format(kml_dl_file_name))
             with open(kml_file_name, 'rb') as kml_file:
                 while True:
                     data = kml_file.read(4096)
@@ -232,4 +245,19 @@ class DownloadHandler(TornadoRequestHandlerBase):
                         break
                     self.write(data)
                 self.finish()
+
+    @staticmethod
+    def is_public_log(log_id):
+        """ True if the log is flagged public in the DB (unknown logs count
+        as private) """
+        con = get_db_connection()
+        try:
+            cur = con.cursor()
+            cur.execute('select Public from Logs where Id = ?', [log_id])
+            db_tuple = cur.fetchone()
+            return db_tuple is not None and db_tuple[0] == 1
+        except sqlite3.Error:
+            return False
+        finally:
+            con.close()
 
