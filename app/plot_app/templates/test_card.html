@@ -73,7 +73,7 @@
                     <td><a href="#tp-{{ loop.index }}">{{ point.test_point_id|e }}</a></td>
                     <td>{{ point.description|e }}</td>
                     <td>{{ fmt(point.start_s, 1) }} &ndash; {{ fmt(point.end_s, 1) }}</td>
-                    <td>{{ fmt(point.duration_flown_s, 1) }}</td>
+                    <td>{{ fmt(point.duration_flown_s, 1) }}{% if point.clipped %} <span class="badge bg-secondary" title="window extends beyond the log">clipped</span>{% endif %}</td>
                     <td>{{ fmt(point.metrics.nz_peak_g) }} / {{ fmt(point.metrics.nz_mean_g) }}</td>
                     <td>{{ fmt(point.metrics.airspeed_min_mps, 1) }} / {{ fmt(point.metrics.airspeed_max_mps, 1) }}</td>
                     <td>{{ fmt(point.metrics.alt_min_m, 1) }} / {{ fmt(point.metrics.alt_max_m, 1) }}</td>
@@ -110,7 +110,7 @@
                         <table class="table table-sm mb-0">
                             <tr><th>Window</th>
                                 <td>{{ fmt(point.start_s, 1) }} s &ndash; {{ fmt(point.end_s, 1) }} s
-                                    (flown {{ fmt(point.duration_flown_s, 1) }} s)</td></tr>
+                                    (flown {{ fmt(point.duration_flown_s, 1) }} s{% if point.clipped %}, window clipped to the log{% endif %})</td></tr>
                             <tr><th>Nz peak</th><td>{{ fmt(point.metrics.nz_peak_g) }} g
                                 {% if point.limits.nz_max_g is not none %}<small class="text-muted">(limit {{ fmt(point.limits.nz_max_g) }} g)</small>{% endif %}</td></tr>
                             <tr><th>Nz mean</th><td>{{ fmt(point.metrics.nz_mean_g) }} g</td></tr>

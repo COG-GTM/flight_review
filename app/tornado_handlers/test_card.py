@@ -27,8 +27,10 @@ from .common import CustomHTTPError, TornadoRequestHandlerBase, get_jinja_env
 #pylint: disable=abstract-method, attribute-defined-outside-init
 
 MAX_CSV_SIZE = 256 * 1024
-# slack for the multipart framing around the CSV part
-MAX_BODY_SIZE = MAX_CSV_SIZE + 4 * 1024
+# the CSV part is limited to MAX_CSV_SIZE; the whole request body (multipart
+# framing, file name, any extra form fields) is limited to MAX_BODY_SIZE
+MAX_MULTIPART_OVERHEAD = 64 * 1024
+MAX_BODY_SIZE = MAX_CSV_SIZE + MAX_MULTIPART_OVERHEAD
 UPLOAD_FIELD = 'testcard'
 ALLOWED_CONTENT_TYPES = ('text/csv',)
 

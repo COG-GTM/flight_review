@@ -11,7 +11,7 @@ import tornado.web
 from tornado.testing import AsyncHTTPTestCase
 
 from tornado_handlers import test_card as handler_module
-from tornado_handlers.test_card import MAX_CSV_SIZE
+from tornado_handlers.test_card import MAX_BODY_SIZE, MAX_CSV_SIZE
 from test_card import TEST_CARD_COLUMNS, TEST_CARD_FILE_SUFFIX
 from ulog_gen import synthetic_flight
 
@@ -23,11 +23,16 @@ VALID_CARD = (HEADER + '\n'
 BOUNDARY = 'testcardboundary'
 
 
-def multipart(field, filename, content, content_type='text/csv'):
-    """ build a multipart/form-data body with a single file part """
-    body = ('--{b}\r\n'
-            'Content-Disposition: form-data; name="{f}"; filename="{n}"\r\n'
-            'Content-Type: {t}\r\n\r\n').format(b=BOUNDARY, f=field, n=filename, t=content_type)
+def multipart(field, filename, content, content_type='text/csv', extra_fields=()):
+    """ build a multipart/form-data body with a single file part (and optional
+    plain form fields, as (name, value) pairs, in front of it) """
+    body = ''
+    for name, value in extra_fields:
+        body += ('--{b}\r\nContent-Disposition: form-data; name="{n}"\r\n\r\n'
+                 '{v}\r\n').format(b=BOUNDARY, n=name, v=value)
+    body += ('--{b}\r\n'
+             'Content-Disposition: form-data; name="{f}"; filename="{n}"\r\n'
+             'Content-Type: {t}\r\n\r\n').format(b=BOUNDARY, f=field, n=filename, t=content_type)
     body = body.encode() + content + '\r\n--{}--\r\n'.format(BOUNDARY).encode()
     return body, 'multipart/form-data; boundary=' + BOUNDARY
 
@@ -153,6 +158,25 @@ class TestCardHandlerTest(AsyncHTTPTestCase):
         response = self._upload(self.log_id, content)
         self.assertEqual(response.code, 201)
         self.assertTrue(os.path.exists(self._card_path(self.log_id)))
+
+    def test_csv_at_the_limit_with_large_multipart_framing_is_accepted(self):
+        # the CSV limit applies to the CSV part only: a long file name and
+        # extra form fields (> 4 KB of framing) must not cause a rejection
+        content = VALID_CARD + b'\n' * (MAX_CSV_SIZE - len(VALID_CARD))
+        body, content_type = multipart('testcard', 'x' * 2048 + '.csv', content,
+                                       extra_fields=[('note', 'y' * 3000)])
+        self.assertGreater(len(body), MAX_CSV_SIZE + 4 * 1024)
+        response = self._post(self.log_id, body, content_type)
+        self.assertEqual(response.code, 201)
+        self.assertTrue(os.path.exists(self._card_path(self.log_id)))
+
+    def test_whole_body_is_still_bounded(self):
+        # a small CSV wrapped in an oversized multipart body is rejected
+        body, content_type = multipart('testcard', 'card.csv', VALID_CARD,
+                                       extra_fields=[('note', 'y' * MAX_BODY_SIZE)])
+        response = self._post(self.log_id, body, content_type)
+        self.assertEqual(response.code, 413)
+        self.assertFalse(os.path.exists(self._card_path(self.log_id)))
 
     def test_wrong_content_type_is_rejected(self):
         response = self._upload(self.log_id, content_type='application/octet-stream')

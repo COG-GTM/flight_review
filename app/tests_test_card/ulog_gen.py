@@ -135,7 +135,8 @@ def _quaternion_from_roll(roll_rad):
 def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_us=1_000_000,
                      include=('vehicle_acceleration', 'airspeed_validated',
                               'vehicle_local_position', 'vehicle_attitude'),
-                     nz_bust=(50.0, 55.0, 3.2), invalid_z=(100.0, 110.0), with_vz=True):
+                     nz_bust=(50.0, 55.0, 3.2), invalid_z=(100.0, 110.0), with_vz=True,
+                     ref_alt=0.0, ref_alt_valid_from_s=0.0, airspeed_invalid=None):
     """
     Write a synthetic fixed-wing flight:
 
@@ -146,6 +147,8 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
       invalid in the `invalid_z` window
     * a 45 degree bank between 70 s and 80 s
     * `with_vz=False` omits the vz / v_z_valid fields from vehicle_local_position
+    * `ref_alt` (m AMSL) is NaN before `ref_alt_valid_from_s` seconds
+    * `airspeed_invalid=(t0, t1)` marks selected_airspeed_index = -1 in that window
 
     :return: dict with the ground-truth arrays (time_s, nz_g, airspeed, alt_m, vz, bank_deg)
     """
@@ -164,6 +167,13 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
                      220.0 - 120.0 * (time_s - duration_s / 2) / (duration_s / 2))
     vz = np.gradient(-alt_m, time_s)  # positive down
     z_valid = ~((time_s >= invalid_z[0]) & (time_s < invalid_z[1]))
+
+    airspeed_index = np.ones(num, dtype=np.int8)
+    if airspeed_invalid is not None:
+        airspeed_index[(time_s >= airspeed_invalid[0]) & (time_s < airspeed_invalid[1])] = -1
+
+    ref_alt_column = np.full(num, float(ref_alt))
+    ref_alt_column[time_s < ref_alt_valid_from_s] = np.nan
 
     bank_rad = np.zeros(num)
     bank_rad[(time_s >= 70.0) & (time_s < 80.0)] = np.radians(45.0)
@@ -185,7 +195,7 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
                 'timestamp': timestamps, 'indicated_airspeed_m_s': airspeed,
                 'calibrated_airspeed_m_s': airspeed, 'true_airspeed_m_s': airspeed * 1.05,
                 'airspeed_sensor_measurement_valid': np.ones(num, dtype=bool),
-                'selected_airspeed_index': np.ones(num, dtype=np.int8)}))
+                'selected_airspeed_index': airspeed_index}))
     if 'vehicle_local_position' in include:
         fields = [('uint64_t', 1, 'timestamp'), ('float', 1, 'x'), ('float', 1, 'y'),
                   ('float', 1, 'z'), ('float', 1, 'vx'), ('float', 1, 'vy'),
@@ -193,7 +203,7 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
                   ('bool', 1, 'v_xy_valid')]
         columns = {'timestamp': timestamps, 'x': airspeed * time_s, 'y': np.zeros(num),
                    'z': -alt_m, 'vx': airspeed, 'vy': np.zeros(num),
-                   'ref_alt': np.zeros(num), 'xy_valid': np.ones(num, dtype=bool),
+                   'ref_alt': ref_alt_column, 'xy_valid': np.ones(num, dtype=bool),
                    'z_valid': z_valid, 'v_xy_valid': np.ones(num, dtype=bool)}
         if with_vz:
             fields += [('float', 1, 'vz'), ('bool', 1, 'v_z_valid')]

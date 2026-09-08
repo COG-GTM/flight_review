@@ -241,20 +241,28 @@ def extract_series(ulog):
 
     airspeed = _dataset(ulog, 'airspeed_validated')
     if airspeed is not None and 'calibrated_airspeed_m_s' in airspeed.data:
-        series['airspeed_mps'] = _Series(_time_s(ulog, airspeed),
-                                         airspeed.data['calibrated_airspeed_m_s'])
+        # selected_airspeed_index < 0: no valid airspeed source selected
+        airspeed_valid = np.ones(len(airspeed.data['timestamp']), dtype=bool)
+        if 'selected_airspeed_index' in airspeed.data:
+            airspeed_valid = airspeed.data['selected_airspeed_index'] >= 0
+        series['airspeed_mps'] = _Series(
+            _time_s(ulog, airspeed),
+            _masked(airspeed.data['calibrated_airspeed_m_s'], airspeed_valid))
 
     local_pos = _dataset(ulog, 'vehicle_local_position')
     if local_pos is not None and 'z' in local_pos.data:
         time_s = _time_s(ulog, local_pos)
         z_valid = _valid_mask(local_pos, 'z_valid')
         alt = -local_pos.data['z'].astype(np.float64)
+        alt_source = 'vehicle_local_position (-z)'
         if 'ref_alt' in local_pos.data:
+            # keep the whole series in one frame: absolute (AMSL) if a
+            # reference is ever available, masking samples without one
             ref_alt = local_pos.data['ref_alt'].astype(np.float64)
-            alt = np.where(np.isfinite(ref_alt), alt + ref_alt, alt)
-            alt_source = 'vehicle_local_position (ref_alt - z)'
-        else:
-            alt_source = 'vehicle_local_position (-z)'
+            ref_valid = np.isfinite(ref_alt)
+            if np.any(ref_valid):
+                alt = _masked(alt + ref_alt, ref_valid)
+                alt_source = 'vehicle_local_position (ref_alt - z)'
         alt = _Series(time_s, _masked(alt, z_valid))
         if len(alt) > 0:
             series['alt_m'] = alt
@@ -386,6 +394,7 @@ def reduce_test_point(series, point, log_duration_s):
         'start_s': start_s,
         'end_s': end_s,
         'duration_flown_s': duration_flown_s,
+        'clipped': duration_flown_s < end_s - start_s,
         'limits': {name: point.get(name) for name in LIMIT_COLUMNS},
         'metrics': metrics,
         'not_logged': not_logged,

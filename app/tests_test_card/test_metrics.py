@@ -127,9 +127,13 @@ def test_window_clipping_at_end_of_log(synthetic_ulog):
     (result,) = _reduce(synthetic_ulog, _point('LATE', 100, 130))
     assert result['start_s'] == 100.0 and result['end_s'] == 130.0
     assert result['duration_flown_s'] == pytest.approx(20.0)
+    assert result['clipped'] is True
     assert result['status'] == STATUS_COMPLETE
     # all samples belong to the log, none are extrapolated past 120 s
     assert result['metrics']['airspeed_max_mps'] == pytest.approx(35.0, abs=1e-4)
+
+    (result,) = _reduce(synthetic_ulog, _point('INSIDE', 100, 120))
+    assert result['clipped'] is False
 
 
 def test_no_data_beyond_end_of_log(synthetic_ulog):
@@ -156,6 +160,49 @@ def test_validity_flags_mask_altitude_samples(synthetic_ulog):
     truth_alt = 220.0 - 2.0 * (np.array([95.0, 110.0, 115.0]) - 60.0)
     assert result['metrics']['alt_max_m'] == pytest.approx(truth_alt[0], abs=1e-3)
     assert result['metrics']['alt_min_m'] == pytest.approx(truth_alt[2], abs=1e-3)
+
+
+def test_airspeed_samples_without_a_valid_source_are_masked(tmp_path):
+    filename = str(tmp_path / 'airspeed_invalid.ulg')
+    synthetic_flight(filename, airspeed_invalid=(20.0, 30.0))
+    ulog = ULog(filename)
+    # entirely inside the invalid window: airspeed logged, but no usable sample
+    (result,) = _reduce(ulog, _point('INV', 20, 29.9, airspeed_max_mps=10.0))
+    assert result['metrics']['airspeed_max_mps'] is None
+    assert result['unchecked_limits'] == ['airspeed_max_mps']
+    assert result['status'] == STATUS_COMPLETE
+    # straddling the window: only valid samples contribute (airspeed = 15 + t/6)
+    (result,) = _reduce(ulog, _point('EDGE', 15, 35))
+    assert result['metrics']['airspeed_min_mps'] == pytest.approx(15.0 + 15.0 / 6.0, abs=1e-3)
+    assert result['metrics']['airspeed_max_mps'] == pytest.approx(15.0 + 35.0 / 6.0, abs=1e-3)
+
+
+def test_altitude_series_stays_in_one_frame_when_ref_alt_appears(tmp_path):
+    filename = str(tmp_path / 'ref_alt_late.ulg')
+    synthetic_flight(filename, ref_alt=500.0, ref_alt_valid_from_s=30.0, invalid_z=(0.0, 0.0))
+    ulog = ULog(filename)
+    series = extract_series(ulog)
+    assert series['sources']['alt_m'] == 'vehicle_local_position (ref_alt - z)'
+    # samples without a reference are masked, not reported as relative altitude
+    (result,) = _reduce(ulog, _point('EARLY', 0, 29.9, alt_min_m=550.0))
+    assert result['metrics']['alt_min_m'] is None
+    assert result['unchecked_limits'] == ['alt_min_m']
+    # 0..60 s: relative 100 -> 220 m, absolute = 600 -> 720 m; only t >= 30 s counts
+    (result,) = _reduce(ulog, _point('SPAN', 0, 60, alt_min_m=550.0))
+    assert result['metrics']['alt_min_m'] == pytest.approx(660.0, abs=1e-3)
+    assert result['metrics']['alt_max_m'] == pytest.approx(720.0, abs=1e-3)
+    assert result['exceedances'] == []
+
+
+def test_altitude_is_relative_when_ref_alt_is_never_valid(tmp_path):
+    filename = str(tmp_path / 'ref_alt_never.ulg')
+    synthetic_flight(filename, ref_alt_valid_from_s=1000.0, invalid_z=(0.0, 0.0))
+    ulog = ULog(filename)
+    series = extract_series(ulog)
+    assert series['sources']['alt_m'] == 'vehicle_local_position (-z)'
+    (result,) = _reduce(ulog, _point('REL', 0, 60))
+    assert result['metrics']['alt_min_m'] == pytest.approx(100.0, abs=1e-3)
+    assert result['metrics']['alt_max_m'] == pytest.approx(220.0, abs=1e-3)
 
 
 def test_missing_topics_are_reported_as_not_logged(tmp_path):
