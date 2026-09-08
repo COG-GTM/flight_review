@@ -42,8 +42,8 @@ class TestCardHandler(TornadoRequestHandlerBase):
         self._body = bytearray()
         self._body_too_large = False
         if self.request.method == 'POST':
-            content_length = self.request.headers.get('Content-Length')
-            if content_length is not None and int(content_length) > MAX_BODY_SIZE:
+            content_length = self.request.headers.get('Content-Length', '')
+            if content_length.isdigit() and int(content_length) > MAX_BODY_SIZE:
                 self._body_too_large = True
 
     def data_received(self, chunk):

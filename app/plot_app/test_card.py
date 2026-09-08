@@ -168,6 +168,17 @@ class _Series:
         mask = (self.time_s >= start_s) & (self.time_s <= end_s)
         return _Series(self.time_s[mask], self.values[mask])
 
+    def hold_window(self, start_s, end_s):
+        """
+        Like window(), but also includes the last sample before start_s: under
+        zero-order hold that sample is the value in effect at start_s.
+        """
+        mask = (self.time_s >= start_s) & (self.time_s <= end_s)
+        before = np.flatnonzero(self.time_s < start_s)
+        if len(before) > 0:
+            mask[before[-1]] = True
+        return _Series(self.time_s[mask], self.values[mask])
+
     def __len__(self):
         return len(self.values)
 
@@ -241,22 +252,30 @@ def extract_series(ulog):
         if 'ref_alt' in local_pos.data:
             ref_alt = local_pos.data['ref_alt'].astype(np.float64)
             alt = np.where(np.isfinite(ref_alt), alt + ref_alt, alt)
-            sources['alt_m'] = 'vehicle_local_position (ref_alt - z)'
+            alt_source = 'vehicle_local_position (ref_alt - z)'
         else:
-            sources['alt_m'] = 'vehicle_local_position (-z)'
-        series['alt_m'] = _Series(time_s, _masked(alt, z_valid))
+            alt_source = 'vehicle_local_position (-z)'
+        alt = _Series(time_s, _masked(alt, z_valid))
+        if len(alt) > 0:
+            series['alt_m'] = alt
+            sources['alt_m'] = alt_source
         if 'vz' in local_pos.data:
             vz_valid = _valid_mask(local_pos, 'v_z_valid')
-            series['sink_rate_mps'] = _Series(time_s, _masked(local_pos.data['vz'], vz_valid))
-            sources['sink_rate_mps'] = 'vehicle_local_position (vz)'
+            sink_rate = _Series(time_s, _masked(local_pos.data['vz'], vz_valid))
+            if len(sink_rate) > 0:
+                series['sink_rate_mps'] = sink_rate
+                sources['sink_rate_mps'] = 'vehicle_local_position (vz)'
 
-    if series['alt_m'] is None:
+    # barometric fallback, independently for altitude and vertical speed, if
+    # the estimator topic is missing or has no valid sample at all
+    if series['alt_m'] is None or series['sink_rate_mps'] is None:
         air_data = _dataset(ulog, 'vehicle_air_data')
         if air_data is not None and 'baro_alt_meter' in air_data.data:
             time_s = _time_s(ulog, air_data)
             baro_alt = air_data.data['baro_alt_meter'].astype(np.float64)
-            series['alt_m'] = _Series(time_s, baro_alt)
-            sources['alt_m'] = 'vehicle_air_data (baro_alt_meter)'
+            if series['alt_m'] is None:
+                series['alt_m'] = _Series(time_s, baro_alt)
+                sources['alt_m'] = 'vehicle_air_data (baro_alt_meter)'
             if series['sink_rate_mps'] is None and len(time_s) > 1:
                 series['sink_rate_mps'] = _Series(
                     time_s, -np.gradient(baro_alt, time_s))
@@ -299,18 +318,27 @@ _LIMIT_CHECKS = (
 )
 
 
-def _exceedances(windows, point, start_s, end_s):
+def _exceedances(series, windows, point, start_s, end_s):
+    """
+    :return: (list of exceedances, list of limits that could not be checked
+        because the metric is not logged or has no sample in the window)
+    """
     exceedances = []
+    unchecked = []
     for limit_name, series_name, predicate_factory in _LIMIT_CHECKS:
         limit = point.get(limit_name)
-        window = windows[series_name]
-        if limit is None or window is None or len(window) == 0:
+        if limit is None:
             continue
-        seconds = window.exceedance_seconds(start_s, end_s, predicate_factory(limit))
+        window = windows[series_name]
+        if window is None or len(window) == 0:
+            unchecked.append(limit_name)
+            continue
+        hold_window = series[series_name].hold_window(start_s, end_s)
+        seconds = hold_window.exceedance_seconds(start_s, end_s, predicate_factory(limit))
         if seconds > 0.0:
             exceedances.append({'limit': limit_name, 'limit_value': limit,
                                 'seconds': seconds})
-    return exceedances
+    return exceedances, unchecked
 
 
 def reduce_test_point(series, point, log_duration_s):
@@ -340,8 +368,10 @@ def reduce_test_point(series, point, log_duration_s):
     has_data = any(window is not None and len(window) > 0 for window in windows.values())
 
     exceedances = []
+    unchecked_limits = [name for name in LIMIT_COLUMNS if point.get(name) is not None]
     if has_data and duration_flown_s > 0:
-        exceedances = _exceedances(windows, point, clipped_start, clipped_end)
+        exceedances, unchecked_limits = _exceedances(series, windows, point,
+                                                     clipped_start, clipped_end)
 
     if not has_data or duration_flown_s <= 0:
         status = STATUS_NO_DATA
@@ -360,6 +390,7 @@ def reduce_test_point(series, point, log_duration_s):
         'metrics': metrics,
         'not_logged': not_logged,
         'exceedances': exceedances,
+        'unchecked_limits': unchecked_limits,
         'status': status,
     }
 

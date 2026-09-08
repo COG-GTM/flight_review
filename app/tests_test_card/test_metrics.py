@@ -74,6 +74,29 @@ def test_exceedance_seconds_are_clipped_to_the_window(synthetic_ulog):
     (result,) = _reduce(synthetic_ulog, _point('OUT', 56, 70, nz_max_g=2.5))
     assert result['status'] == STATUS_COMPLETE
     assert result['exceedances'] == []
+    assert result['unchecked_limits'] == []
+
+
+def test_exceedance_window_starting_between_samples(synthetic_ulog):
+    # samples every 50 ms; the sample at 50.00 s (3.2 g) is still in effect
+    # at the window start 50.02 s and must be integrated from 50.02 s onwards
+    (result,) = _reduce(synthetic_ulog, _point('MID', 50.02, 52.0, nz_max_g=2.5))
+    assert result['status'] == STATUS_EXCEEDANCE
+    assert result['exceedances'][0]['seconds'] == pytest.approx(1.98, abs=1e-6)
+    # summary metrics stay sample based
+    assert result['metrics']['nz_peak_g'] == pytest.approx(3.2, abs=1e-6)
+    assert result['metrics']['nz_mean_g'] == pytest.approx(3.2, abs=1e-6)
+
+    # the value before the window (1 g) must not leak in: window starts between
+    # 49.95 s (1 g) and 50.00 s (3.2 g)
+    (result,) = _reduce(synthetic_ulog, _point('EDGE', 49.98, 52.0, nz_max_g=2.5))
+    assert result['exceedances'][0]['seconds'] == pytest.approx(2.0, abs=1e-6)
+
+    # a window with no sample inside is NO DATA even though a held value exists
+    (result,) = _reduce(synthetic_ulog, _point('GAP', 50.01, 50.04, nz_max_g=2.5))
+    assert result['status'] == STATUS_NO_DATA
+    assert result['exceedances'] == []
+    assert result['unchecked_limits'] == ['nz_max_g']
 
 
 def test_airspeed_and_altitude_limits(synthetic_ulog):
@@ -150,8 +173,9 @@ def test_missing_topics_are_reported_as_not_logged(tmp_path):
     assert metrics['airspeed_min_mps'] != NOT_LOGGED
     assert result['not_logged'] == ['alt_max_m', 'alt_min_m', 'bank_max_deg',
                                     'nz_mean_g', 'nz_peak_g', 'sink_rate_max_mps']
-    # limits on metrics that are not logged cannot be exceeded
+    # limits on metrics that are not logged cannot be exceeded, but are reported
     assert result['exceedances'] == []
+    assert result['unchecked_limits'] == ['nz_max_g', 'alt_min_m']
     assert result['status'] == STATUS_COMPLETE
 
 
@@ -182,6 +206,39 @@ def test_local_position_is_preferred_over_baro(tmp_path):
     synthetic_flight(filename, include=('vehicle_local_position', 'vehicle_air_data'))
     series = extract_series(ULog(filename))
     assert series['sources']['alt_m'].startswith('vehicle_local_position')
+    assert series['sources']['sink_rate_mps'] == 'vehicle_local_position (vz)'
+
+
+def test_baro_sink_rate_fallback_without_local_vz(tmp_path):
+    filename = str(tmp_path / 'no_vz.ulg')
+    synthetic_flight(filename, include=('vehicle_local_position', 'vehicle_air_data'),
+                     with_vz=False)
+    ulog = ULog(filename)
+    series = extract_series(ulog)
+    assert series['sources']['alt_m'].startswith('vehicle_local_position')
+    assert series['sources']['sink_rate_mps'] == 'vehicle_air_data (d/dt baro_alt_meter)'
+    (result,) = _reduce(ulog, _point('DESC', 70, 80))
+    assert result['metrics']['sink_rate_max_mps'] == pytest.approx(2.0, abs=1e-2)
+
+    # without vehicle_air_data the vertical speed is simply not logged
+    filename = str(tmp_path / 'no_vz_no_baro.ulg')
+    synthetic_flight(filename, include=('vehicle_local_position',), with_vz=False)
+    (result,) = _reduce(ULog(filename), _point('DESC', 70, 80))
+    assert result['metrics']['sink_rate_max_mps'] == NOT_LOGGED
+    assert result['metrics']['alt_min_m'] != NOT_LOGGED
+
+
+def test_baro_fallback_when_every_local_sample_is_invalid(tmp_path):
+    filename = str(tmp_path / 'all_invalid.ulg')
+    synthetic_flight(filename, include=('vehicle_local_position', 'vehicle_air_data'),
+                     invalid_z=(0.0, 1000.0))
+    ulog = ULog(filename)
+    series = extract_series(ulog)
+    assert series['sources']['alt_m'] == 'vehicle_air_data (baro_alt_meter)'
+    assert series['sources']['sink_rate_mps'] == 'vehicle_air_data (d/dt baro_alt_meter)'
+    (result,) = _reduce(ulog, _point('DESC', 70, 80))
+    assert result['metrics']['alt_max_m'] == pytest.approx(200.0, abs=1e-3)
+    assert result['metrics']['sink_rate_max_mps'] == pytest.approx(2.0, abs=1e-2)
 
 
 def test_results_are_json_serialisable(synthetic_ulog):

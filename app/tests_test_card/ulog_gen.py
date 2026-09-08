@@ -135,7 +135,7 @@ def _quaternion_from_roll(roll_rad):
 def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_us=1_000_000,
                      include=('vehicle_acceleration', 'airspeed_validated',
                               'vehicle_local_position', 'vehicle_attitude'),
-                     nz_bust=(50.0, 55.0, 3.2), invalid_z=(100.0, 110.0)):
+                     nz_bust=(50.0, 55.0, 3.2), invalid_z=(100.0, 110.0), with_vz=True):
     """
     Write a synthetic fixed-wing flight:
 
@@ -145,6 +145,7 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
     * altitude climbs 100 m -> 220 m then descends, with z/v_z marked
       invalid in the `invalid_z` window
     * a 45 degree bank between 70 s and 80 s
+    * `with_vz=False` omits the vz / v_z_valid fields from vehicle_local_position
 
     :return: dict with the ground-truth arrays (time_s, nz_g, airspeed, alt_m, vz, bank_deg)
     """
@@ -186,16 +187,18 @@ def synthetic_flight(filename, duration_s=120.0, rate_hz=20.0, start_timestamp_u
                 'airspeed_sensor_measurement_valid': np.ones(num, dtype=bool),
                 'selected_airspeed_index': np.ones(num, dtype=np.int8)}))
     if 'vehicle_local_position' in include:
-        topics.append(Topic('vehicle_local_position', [
-            ('uint64_t', 1, 'timestamp'), ('float', 1, 'x'), ('float', 1, 'y'),
-            ('float', 1, 'z'), ('float', 1, 'vx'), ('float', 1, 'vy'), ('float', 1, 'vz'),
-            ('float', 1, 'ref_alt'), ('bool', 1, 'xy_valid'), ('bool', 1, 'z_valid'),
-            ('bool', 1, 'v_xy_valid'), ('bool', 1, 'v_z_valid')], {
-                'timestamp': timestamps, 'x': airspeed * time_s, 'y': np.zeros(num),
-                'z': -alt_m, 'vx': airspeed, 'vy': np.zeros(num), 'vz': vz,
-                'ref_alt': np.zeros(num), 'xy_valid': np.ones(num, dtype=bool),
-                'z_valid': z_valid, 'v_xy_valid': np.ones(num, dtype=bool),
-                'v_z_valid': z_valid}))
+        fields = [('uint64_t', 1, 'timestamp'), ('float', 1, 'x'), ('float', 1, 'y'),
+                  ('float', 1, 'z'), ('float', 1, 'vx'), ('float', 1, 'vy'),
+                  ('float', 1, 'ref_alt'), ('bool', 1, 'xy_valid'), ('bool', 1, 'z_valid'),
+                  ('bool', 1, 'v_xy_valid')]
+        columns = {'timestamp': timestamps, 'x': airspeed * time_s, 'y': np.zeros(num),
+                   'z': -alt_m, 'vx': airspeed, 'vy': np.zeros(num),
+                   'ref_alt': np.zeros(num), 'xy_valid': np.ones(num, dtype=bool),
+                   'z_valid': z_valid, 'v_xy_valid': np.ones(num, dtype=bool)}
+        if with_vz:
+            fields += [('float', 1, 'vz'), ('bool', 1, 'v_z_valid')]
+            columns.update({'vz': vz, 'v_z_valid': z_valid})
+        topics.append(Topic('vehicle_local_position', fields, columns))
     if 'vehicle_air_data' in include:
         topics.append(Topic('vehicle_air_data', [
             ('uint64_t', 1, 'timestamp'), ('float', 1, 'baro_alt_meter'),

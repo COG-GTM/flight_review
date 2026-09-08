@@ -135,7 +135,10 @@ Metrics come from `vehicle_acceleration` (Nz), `airspeed_validated`
 (calibrated airspeed), `vehicle_local_position` or `vehicle_air_data`
 (altitude, sink rate; masked by the `z_valid`/`v_z_valid` flags) and
 `vehicle_attitude` (bank), and are reported as "not logged" if a topic is
-missing. The data reduction lives in `app/plot_app/test_card.py`, the HTTP
+missing (`vehicle_air_data` is used for altitude and/or sink rate whenever the
+estimator has no valid samples for it). Limits whose metric has no data inside
+a window are listed as `unchecked_limits` and are not counted as exceedances.
+The data reduction lives in `app/plot_app/test_card.py`, the HTTP
 handler in `app/tornado_handlers/test_card.py`; tests are in
 `app/tests_test_card` (`pytest app/tests_test_card`).
 
