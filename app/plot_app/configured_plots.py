@@ -26,11 +26,20 @@ from vtol_tailsitter import *
 
 
 def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
-                   link_to_pid_analysis_page):
-    """ create a list of bokeh plots (and widgets) to show """
+                   link_to_pid_analysis_page, link_to_test_card_page=None,
+                   test_card=None):
+    """ create a list of bokeh plots (and widgets) to show
+
+    :param link_to_test_card_page: if set, link to the test card page in the heading
+    :param test_card: parsed test card (list of dicts, see test_card.py), or None
+    """
 
     plots = []
     data = ulog.data_list
+
+    def add_test_card_windows(data_plot):
+        if test_card:
+            plot_test_card_windows(data_plot, test_card, ulog.start_timestamp)
 
     # COMPATIBILITY support for old logs
     if any(elem.name in ('vehicle_air_data', 'vehicle_magnetometer') for elem in data):
@@ -127,9 +136,12 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
 
 
     # Heading
+    additional_links = [("Open PID Analysis", link_to_pid_analysis_page)]
+    if link_to_test_card_page is not None:
+        additional_links.append(("Test Card", link_to_test_card_page))
     curdoc().template_variables['title_html'] = get_heading_html(
         ulog, px4_ulog, db_data, link_to_3d_page,
-        additional_links=[("Open PID Analysis", link_to_pid_analysis_page)])
+        additional_links=additional_links)
 
     # info text on top (logging duration, max speed, ...)
     curdoc().template_variables['info_table_html'] = \
@@ -194,10 +206,15 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
     data_plot.add_graph(['baro_alt_meter'], colors8[1:2], ['Barometer Altitude'])
     data_plot.change_dataset('vehicle_global_position')
     data_plot.add_graph(['alt'], colors8[2:3], ['Fused Altitude Estimation'])
+    if not any(elem.name == 'vehicle_global_position' for elem in data):
+        data_plot.change_dataset('vehicle_local_position')
+        data_plot.add_graph([lambda data: ('alt', local_position_altitude(data))],
+                            colors8[2:3], ['Local Position Altitude'])
     data_plot.change_dataset('position_setpoint_triplet')
     data_plot.add_circle(['current.alt'], [plot_config['mission_setpoint_color']],
                         ['Altitude Setpoint'])
     plot_flight_modes_background(data_plot, flight_mode_changes, vtol_states)
+    add_test_card_windows(data_plot)
 
     if data_plot.finalize() is not None: plots.append(data_plot)
 
@@ -398,7 +415,8 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
 
     # Airspeed vs Ground speed: but only if there's valid airspeed data or a VTOL
     try:
-        if is_vtol or ulog.get_dataset('airspeed') is not None:
+        has_airspeed = any(elem.name in ('airspeed', 'airspeed_validated') for elem in data)
+        if is_vtol or has_airspeed:
             data_plot = DataPlot(data, plot_config, 'vehicle_global_position',
                                  y_axis_label='[m/s]', title='Airspeed',
                                  plot_height='small',
@@ -424,6 +442,7 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
             data_plot.change_dataset('tecs_status')
             data_plot.add_graph(['true_airspeed_sp'], colors8[3:4], ['True Airspeed Setpoint'])
             plot_flight_modes_background(data_plot, flight_mode_changes, vtol_states)
+            add_test_card_windows(data_plot)
 
             if data_plot.finalize() is not None: plots.append(data_plot)
     except (KeyError, IndexError) as error:

@@ -16,7 +16,7 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 
-from config import debug_verbose_output
+from config import debug_verbose_output, colors8
 from downsampling import DynamicDownsample
 from helper import (
     map_projection, WGS84_to_mercator, flight_modes_table, vtol_modes_table, get_lat_lon_alt_deg
@@ -205,6 +205,51 @@ def plot_flight_modes_background(data_plot, flight_mode_changes, vtol_states=Non
                         dimension='width', line_color='black',
                         line_width=1, line_alpha=0.5)
         p.add_layout(split_line)
+
+
+
+def local_position_altitude(local_position):
+    """ altitude from a vehicle_local_position dataset's data dict, in the same
+    frame as test_card.extract_series: AMSL (ref_alt - z) if a reference
+    altitude is ever set (samples without one are NaN), otherwise relative (-z) """
+    if 'ref_alt' in local_position:
+        ref_alt = np.asarray(local_position['ref_alt'], dtype=np.float64)
+        ref_valid = np.isfinite(ref_alt)
+        if np.any(ref_valid):
+            return np.where(ref_valid, ref_alt - local_position['z'], np.nan)
+    return -local_position['z']
+
+
+def plot_test_card_windows(data_plot, test_card, log_start_timestamp):
+    """ shade the test-point windows of a test card (list of dicts with
+    start_s, end_s, test_point_id in seconds from log start) on a DataPlot
+    and label each window with its test_point_id """
+    p = data_plot.bokeh_plot
+    labels_x_pos = []
+    labels_text = []
+    for i, point in enumerate(test_card):
+        t_start = int(log_start_timestamp + point['start_s'] * 1e6)
+        t_end = int(log_start_timestamp + point['end_s'] * 1e6)
+        color = colors8[i % len(colors8)]
+        p.add_layout(BoxAnnotation(left=t_start, right=t_end,
+                                   fill_alpha=0.12, line_color=color, line_alpha=0.6,
+                                   line_dash='dashed', fill_color=color,
+                                   movable='none', resizable='none'))
+        labels_x_pos.append(t_start)
+        labels_text.append(point['test_point_id'])
+
+    if len(labels_text) > 0:
+        source = ColumnDataSource(data={'x': labels_x_pos, 'text': labels_text,
+                                        'y': [10] * len(labels_text)})
+        labels = LabelSet(x='x', y='y', text='text',
+                          y_units='screen', level='overlay',
+                          source=source, x_offset=3,
+                          text_font_size='9pt', text_font_style='bold',
+                          text_color='#333333', text_alpha=0.9,
+                          background_fill_color='white',
+                          background_fill_alpha=0.7,
+                          text_align='left', text_baseline='bottom')
+        p.add_layout(labels)
 
 
 def plot_set_equal_aspect_ratio(p, x, y, zoom_out_factor=1.3, min_range=5):

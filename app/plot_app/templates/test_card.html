@@ -1,0 +1,161 @@
+{% include 'header.html' %}
+
+{% macro fmt(value, digits=2) -%}
+{%- if value is none -%}&mdash;{%- elif value is string -%}<span class="text-muted">{{ value|e }}</span>{%- else -%}{{ '%.*f'|format(digits, value) }}{%- endif -%}
+{%- endmacro %}
+
+{% macro status_badge(status) -%}
+{%- if status == 'COMPLETE' -%}
+<span class="badge bg-success">{{ status }}</span>
+{%- elif status == 'COMPLETE WITH EXCEEDANCE' -%}
+<span class="badge bg-danger">{{ status }}</span>
+{%- else -%}
+<span class="badge bg-secondary">{{ status }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <h3>Test Card Results</h3>
+        <p>
+            Log: <a href="plot_app?log={{ log_id|e }}"><code>{{ log_id|e }}</code></a>
+            {% if results %}
+            &middot; <a href="test_card?log={{ log_id|e }}&format=json">JSON</a>
+            &middot; log duration {{ fmt(results.log_duration_s, 1) }} s
+            {% endif %}
+        </p>
+
+        {% if error_message %}
+        <div class="alert alert-danger" role="alert" id="test-card-error">
+            {{ error_message|e }}
+        </div>
+        {% endif %}
+
+        <form enctype="multipart/form-data" method="post" id="test-card-form"
+              action="test_card?log={{ log_id|e }}" class="row g-2 align-items-end mb-4">
+            <div class="col-md-6">
+                <label for="testcard-file" class="form-label">
+                    {% if results %}Replace{% else %}Attach{% endif %} test card (CSV, max {{ max_csv_size_kb }} KB)
+                </label>
+                <input type="file" name="testcard" id="testcard-file" accept=".csv,text/csv"
+                       class="form-control" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+            <div class="col-md-12">
+                <small class="text-muted">Header: <code>{{ csv_header }}</code>.
+                    Times are seconds from log start; limit columns may be left empty.</small>
+            </div>
+        </form>
+
+        {% if results %}
+        <table id="test-card-table" style="border-collapse: collapse !important"
+               class="table table-sm table-striped table-bordered table-condensed">
+            <thead>
+                <tr>
+                    <th>Test Point</th>
+                    <th>Description</th>
+                    <th>Window [s]</th>
+                    <th>Flown [s]</th>
+                    <th>Nz peak / mean [g]</th>
+                    <th>Airspeed min / max [m/s]</th>
+                    <th>Altitude min / max [m]</th>
+                    <th>Bank max [&deg;]</th>
+                    <th>Sink rate max [m/s]</th>
+                    <th>Exceedances</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for point in results.test_points %}
+                <tr>
+                    <td><a href="#tp-{{ loop.index }}">{{ point.test_point_id|e }}</a></td>
+                    <td>{{ point.description|e }}</td>
+                    <td>{{ fmt(point.start_s, 1) }} &ndash; {{ fmt(point.end_s, 1) }}</td>
+                    <td>{{ fmt(point.duration_flown_s, 1) }}{% if point.clipped %} <span class="badge bg-secondary" title="window extends beyond the log">clipped</span>{% endif %}</td>
+                    <td>{{ fmt(point.metrics.nz_peak_g) }} / {{ fmt(point.metrics.nz_mean_g) }}</td>
+                    <td>{{ fmt(point.metrics.airspeed_min_mps, 1) }} / {{ fmt(point.metrics.airspeed_max_mps, 1) }}</td>
+                    <td>{{ fmt(point.metrics.alt_min_m, 1) }} / {{ fmt(point.metrics.alt_max_m, 1) }}</td>
+                    <td>{{ fmt(point.metrics.bank_max_deg, 1) }}</td>
+                    <td>{{ fmt(point.metrics.sink_rate_max_mps, 1) }}</td>
+                    <td>
+                    {% for exc in point.exceedances %}
+                        <span class="badge bg-warning text-dark">{{ exc.limit }} {{ fmt(exc.seconds, 1) }} s</span>
+                    {% else %}
+                        {% if point.unchecked_limits and point.status != 'NO DATA' %}
+                        <span class="text-muted">unchecked: {{ point.unchecked_limits|join(', ') }}</span>
+                        {% else %}
+                        &mdash;
+                        {% endif %}
+                    {% endfor %}
+                    </td>
+                    <td>{{ status_badge(point.status) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <h4>Test Point Details</h4>
+        {% for point in results.test_points %}
+        <div class="card mb-3" id="tp-{{ loop.index }}">
+            <div class="card-header">
+                <b>{{ point.test_point_id|e }}</b>
+                {% if point.description %}&middot; {{ point.description|e }}{% endif %}
+                <span class="float-end">{{ status_badge(point.status) }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm mb-0">
+                            <tr><th>Window</th>
+                                <td>{{ fmt(point.start_s, 1) }} s &ndash; {{ fmt(point.end_s, 1) }} s
+                                    (flown {{ fmt(point.duration_flown_s, 1) }} s{% if point.clipped %}, window clipped to the log{% endif %})</td></tr>
+                            <tr><th>Nz peak</th><td>{{ fmt(point.metrics.nz_peak_g) }} g
+                                {% if point.limits.nz_max_g is not none %}<small class="text-muted">(limit {{ fmt(point.limits.nz_max_g) }} g)</small>{% endif %}</td></tr>
+                            <tr><th>Nz mean</th><td>{{ fmt(point.metrics.nz_mean_g) }} g</td></tr>
+                            <tr><th>Airspeed min / max</th><td>{{ fmt(point.metrics.airspeed_min_mps, 1) }} / {{ fmt(point.metrics.airspeed_max_mps, 1) }} m/s
+                                {% if point.limits.airspeed_max_mps is not none %}<small class="text-muted">(limit {{ fmt(point.limits.airspeed_max_mps, 1) }} m/s)</small>{% endif %}</td></tr>
+                            <tr><th>Altitude band</th><td>{{ fmt(point.metrics.alt_min_m, 1) }} &ndash; {{ fmt(point.metrics.alt_max_m, 1) }} m
+                                {% if point.limits.alt_min_m is not none or point.limits.alt_max_m is not none %}<small class="text-muted">(limits {{ fmt(point.limits.alt_min_m, 1) }} &ndash; {{ fmt(point.limits.alt_max_m, 1) }} m)</small>{% endif %}</td></tr>
+                            <tr><th>Bank max</th><td>{{ fmt(point.metrics.bank_max_deg, 1) }}&deg;</td></tr>
+                            <tr><th>Sink rate max</th><td>{{ fmt(point.metrics.sink_rate_max_mps, 1) }} m/s</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Limit exceedances</h6>
+                        {% if point.exceedances %}
+                        <ul>
+                        {% for exc in point.exceedances %}
+                            <li><code>{{ exc.limit }}</code> = {{ fmt(exc.limit_value) }} exceeded for {{ fmt(exc.seconds, 2) }} s inside the window</li>
+                        {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted">None</p>
+                        {% endif %}
+                        {% if point.unchecked_limits %}
+                        <h6>Limits not checked (no data)</h6>
+                        <p class="text-muted">{{ point.unchecked_limits|join(', ') }}</p>
+                        {% endif %}
+                        {% if point.not_logged %}
+                        <h6>Not logged</h6>
+                        <p class="text-muted">{{ point.not_logged|join(', ') }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if results.sources %}
+        <p><small class="text-muted">Sources:
+            {% for metric, source in results.sources.items() %}{{ metric }}: {{ source }}{% if not loop.last %}; {% endif %}{% endfor %}
+        </small></p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted">No test card attached to this log yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'footer.html' %}

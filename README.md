@@ -105,6 +105,48 @@ cd PX4-Autopilot/Tools
 ./upload_log.py --quiet --server=http://localhost:5006 <file.ulg>
 ```
 
+## Test Card Results
+A flight-test card can be attached to an uploaded log to get per-test-point
+results (peak/mean Nz, min/max airspeed, altitude band, max bank, max sink
+rate, duration flown, limit exceedances and a status of `COMPLETE`,
+`COMPLETE WITH EXCEEDANCE` or `NO DATA`). Open the *Test Card* link in the
+header of a log's plot page, or go to `/test_card?log=<log_id>` directly, and
+upload the card as CSV. The results are shown as a table with a detail section
+per test point, the test-point windows are shaded and labelled on the airspeed
+and altitude plots, and the same data is available as JSON
+(`GET /test_card?log=<log_id>` with `Accept: application/json` or
+`&format=json`). Cards can also be uploaded from the command line:
+
+```bash
+curl -F "testcard=@card.csv;type=text/csv" "http://localhost:5006/test_card?log=<log_id>"
+```
+
+The CSV (max 256 KB, `text/csv`) needs exactly this header; the four limit
+columns are optional per row (leave them empty to skip the check):
+
+```
+test_point_id,description,start_s,end_s,nz_max_g,airspeed_max_mps,alt_min_m,alt_max_m
+TP-01,Climb to altitude,10,40,2.0,30,120,400
+TP-02,Symmetric pull-up,45,60,2.5,,,
+```
+
+`start_s`/`end_s` are seconds from the start of the log (`end_s > start_s`).
+Metrics come from `vehicle_acceleration` (Nz), `airspeed_validated`
+(calibrated airspeed; samples with `selected_airspeed_index < 0` are ignored),
+`vehicle_local_position` or `vehicle_air_data` (altitude, sink rate; masked by
+the `z_valid`/`v_z_valid` flags, altitude is AMSL via `ref_alt` when a
+reference is available and relative otherwise) and `vehicle_attitude` (bank),
+and are reported as "not logged" if a topic is missing (`vehicle_air_data` is
+used for altitude and/or sink rate whenever the estimator has no valid samples
+for it). Exceedance seconds are integrated with a zero-order hold inside the
+window only, and a value is never held across an invalid sample. Limits whose
+metric has no data inside a window are listed as `unchecked_limits` and are
+not counted as exceedances; windows that extend past the end of the log are
+flagged `clipped`.
+The data reduction lives in `app/plot_app/test_card.py`, the HTTP
+handler in `app/tornado_handlers/test_card.py`; tests are in
+`app/tests_test_card` (`pytest app/tests_test_card`).
+
 ## Interactive Usage
 The plotting can also be used interative using a Jupyter Notebook. It
 requires python knowledge, but provides full control over what and how to plot
