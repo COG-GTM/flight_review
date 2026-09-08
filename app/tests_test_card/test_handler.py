@@ -12,7 +12,7 @@ import tornado.web
 from tornado.testing import AsyncHTTPTestCase
 
 from tornado_handlers import test_card as handler_module
-from tornado_handlers.test_card import MAX_BODY_SIZE, MAX_CSV_SIZE
+from tornado_handlers.test_card import MAX_BODY_SIZE, MAX_CSV_SIZE, MAX_MULTIPART_PARTS
 from test_card import TEST_CARD_COLUMNS, TEST_CARD_FILE_SUFFIX
 from ulog_gen import synthetic_flight
 
@@ -170,6 +170,25 @@ class TestCardHandlerTest(AsyncHTTPTestCase):
         response = self._post(self.log_id, body, content_type)
         self.assertEqual(response.code, 201)
         self.assertTrue(os.path.exists(self._card_path(self.log_id)))
+
+    def test_multipart_part_count_is_bounded(self):
+        # a size-compliant body made of thousands of tiny parts is rejected
+        # before it is parsed; a handful of extra form fields is fine
+        many = [('f', 'x')] * MAX_MULTIPART_PARTS
+        body, content_type = multipart('testcard', 'card.csv', VALID_CARD, extra_fields=many)
+        self.assertLess(len(body), MAX_BODY_SIZE)
+        response = self._post(self.log_id, body, content_type)
+        self.assertEqual(response.code, 400)
+        self.assertIn('Too many multipart fields', json.loads(response.body)['error'])
+        self.assertFalse(os.path.exists(self._card_path(self.log_id)))
+
+        body, content_type = multipart('testcard', 'card.csv', VALID_CARD,
+                                       extra_fields=many[:MAX_MULTIPART_PARTS - 1])
+        self.assertEqual(self._post(self.log_id, body, content_type).code, 201)
+
+    def test_multipart_without_boundary_is_rejected(self):
+        response = self._post(self.log_id, b'x', 'multipart/form-data')
+        self.assertEqual(response.code, 400)
 
     def test_whole_body_is_still_bounded(self):
         # a small CSV wrapped in an oversized multipart body is rejected

@@ -209,10 +209,14 @@ def plot_flight_modes_background(data_plot, flight_mode_changes, vtol_states=Non
 
 
 def local_position_altitude(local_position):
-    """ altitude from a vehicle_local_position dataset's data dict: AMSL
-    (ref_alt - z) if a reference altitude is set, otherwise relative (-z) """
-    if 'ref_alt' in local_position and np.all(np.isfinite(local_position['ref_alt'])):
-        return local_position['ref_alt'] - local_position['z']
+    """ altitude from a vehicle_local_position dataset's data dict, in the same
+    frame as test_card.extract_series: AMSL (ref_alt - z) if a reference
+    altitude is ever set (samples without one are NaN), otherwise relative (-z) """
+    if 'ref_alt' in local_position:
+        ref_alt = np.asarray(local_position['ref_alt'], dtype=np.float64)
+        ref_valid = np.isfinite(ref_alt)
+        if np.any(ref_valid):
+            return np.where(ref_valid, ref_alt - local_position['z'], np.nan)
     return -local_position['z']
 
 

@@ -31,8 +31,19 @@ MAX_CSV_SIZE = 256 * 1024
 # framing, file name, any extra form fields) is limited to MAX_BODY_SIZE
 MAX_MULTIPART_OVERHEAD = 64 * 1024
 MAX_BODY_SIZE = MAX_CSV_SIZE + MAX_MULTIPART_OVERHEAD
+# the upload form sends one part; allow a few extra fields but not thousands
+MAX_MULTIPART_PARTS = 16
 UPLOAD_FIELD = 'testcard'
 ALLOWED_CONTENT_TYPES = ('text/csv',)
+
+
+def _multipart_boundary(content_type):
+    """ boundary bytes of a multipart Content-Type header, or None """
+    for field in content_type.split(';')[1:]:
+        key, _, value = field.strip().partition('=')
+        if key.strip().lower() == 'boundary' and value:
+            return value.strip().strip('"').encode('utf-8')
+    return None
 
 
 @tornado.web.stream_request_body
@@ -176,10 +187,16 @@ class TestCardHandler(TornadoRequestHandlerBase):
         content_type = self.request.headers.get('Content-Type', '')
         if not content_type.startswith('multipart/form-data'):
             raise CustomHTTPError(400, 'Expected a multipart/form-data upload')
+        body = bytes(self._body)
+        boundary = _multipart_boundary(content_type)
+        if boundary is None:
+            raise CustomHTTPError(400, 'Expected a multipart/form-data upload')
+        if body.count(b'--' + boundary) > MAX_MULTIPART_PARTS + 1:
+            raise CustomHTTPError(400, 'Too many multipart fields (max {})'.format(
+                MAX_MULTIPART_PARTS))
         arguments = {}
         files = {}
-        parse_body_arguments(content_type, bytes(self._body), arguments, files,
-                             self.request.headers)
+        parse_body_arguments(content_type, body, arguments, files, self.request.headers)
         if UPLOAD_FIELD not in files or len(files[UPLOAD_FIELD]) != 1:
             raise CustomHTTPError(400, 'Expected exactly one file field "{}"'.format(
                 UPLOAD_FIELD))

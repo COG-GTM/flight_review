@@ -3,6 +3,7 @@ has the modern topics the test-card reduction uses (no legacy airspeed, no GPS) 
 import types
 from unittest import mock
 
+import numpy as np
 import pytest
 from bokeh.models import BoxAnnotation, LabelSet
 from pyulog import ULog
@@ -10,6 +11,8 @@ from pyulog.px4 import PX4ULog
 
 import configured_plots
 from db_entry import DBData
+from plotting import local_position_altitude
+from test_card import extract_series
 from ulog_gen import synthetic_flight
 
 CARD = [
@@ -72,6 +75,27 @@ def test_test_card_windows_are_drawn_on_altitude_and_airspeed_plots(modern_ulog)
     # other plots are left alone
     boxes, labels = _windows(plots['Roll Angle'])
     assert boxes == [] and labels == []
+
+
+def test_altitude_plot_uses_the_same_frame_as_the_results(tmp_path):
+    # ref_alt is NaN for the first 30 s: the plot must be AMSL where a reference
+    # exists and blank (NaN) before that, exactly like test_card.extract_series
+    filename = str(tmp_path / 'ref_alt_late.ulg')
+    synthetic_flight(filename, ref_alt=500.0, ref_alt_valid_from_s=30.0, invalid_z=(0.0, 0.0))
+    ulog = ULog(filename)
+    local_position = ulog.get_dataset('vehicle_local_position').data
+    plotted = local_position_altitude(local_position)
+    reduced = extract_series(ulog)['alt_m']
+    assert reduced is not None
+    finite = np.isfinite(plotted)
+    assert np.any(~finite) and np.any(finite)
+    time_s = (local_position['timestamp'] - ulog.start_timestamp) / 1e6
+    assert np.all(time_s[~finite] < 30.0)
+    np.testing.assert_allclose(plotted[finite], reduced.values)
+    # and without any reference the plot shows relative altitude (-z)
+    plotted = local_position_altitude({'z': local_position['z'],
+                                       'ref_alt': np.full(len(local_position['z']), np.nan)})
+    np.testing.assert_allclose(plotted, -local_position['z'])
 
 
 def test_plots_without_local_position_still_work(tmp_path):
