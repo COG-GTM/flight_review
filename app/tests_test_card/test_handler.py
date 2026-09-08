@@ -32,6 +32,13 @@ def multipart(field, filename, content, content_type='text/csv'):
     return body, 'multipart/form-data; boundary=' + BOUNDARY
 
 
+def test_readme_documents_current_size_limit():
+    """ the README states the upload limit; keep it in sync with the handler """
+    readme = os.path.join(os.path.dirname(__file__), '..', '..', 'README.md')
+    with open(readme, encoding='utf-8') as readme_file:
+        assert 'max {} KB'.format(MAX_CSV_SIZE // 1024) in readme_file.read()
+
+
 class TestCardHandlerTest(AsyncHTTPTestCase):
     """ exercises the handler against a temporary log directory and DB """
 
