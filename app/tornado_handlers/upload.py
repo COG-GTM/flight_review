@@ -107,6 +107,22 @@ class UploadHandler(TornadoRequestHandlerBase):
         audit_log('upload', 'failure', reason=reason,
                   client_ip=self.request.remote_ip, **fields)
 
+    def _release_streamer(self):
+        """ delete the multipart temporary files; safe to call repeatedly """
+        streamer, self.multipart_streamer = self.multipart_streamer, None
+        if streamer is not None:
+            streamer.release_parts()
+
+    def on_connection_close(self):
+        """ client went away (or the body limit was hit) before post() ran """
+        if self.multipart_streamer is not None:
+            self._reject_upload('connection closed before upload completed')
+        self._release_streamer()
+
+    def on_finish(self):
+        """ response complete (normal or error) """
+        self._release_streamer()
+
     def data_received(self, chunk):
         """ called whenever new data is received """
         if self.multipart_streamer:
@@ -129,6 +145,11 @@ class UploadHandler(TornadoRequestHandlerBase):
     def post(self, *args, **kwargs):
         """ POST request callback """
         if self.multipart_streamer:
+            log_id = None # set once the file has been written to log storage
+            stored = False # set once the DB row is committed
+            failure_reason = 'internal error'
+            source = 'webui'
+            upload_size = None
             try:
                 self.multipart_streamer.data_complete()
                 form_data = self.multipart_streamer.get_values(
@@ -141,7 +162,6 @@ class UploadHandler(TornadoRequestHandlerBase):
                 upload_type = 'personal'
                 if 'type' in form_data:
                     upload_type = form_data['type'].decode("utf-8")
-                source = 'webui'
                 title = '' # may be used in future...
                 if 'source' in form_data:
                     source = form_data['source'].decode("utf-8")
@@ -235,11 +255,6 @@ class UploadHandler(TornadoRequestHandlerBase):
                     print('Moving uploaded file to', new_file_name)
                     file_obj.move(new_file_name)
 
-                audit_log('upload', 'success', log_id=log_id, source=source,
-                          upload_type=upload_type, size=upload_size,
-                          encrypted=is_encrypted, public=bool(is_public),
-                          client_ip=self.request.remote_ip)
-
                 if obfuscated == 1:
                     # TODO: randomize gps data, ...
                     pass
@@ -277,6 +292,12 @@ class UploadHandler(TornadoRequestHandlerBase):
                     cur.close()
                 finally:
                     con.close()
+
+                stored = True
+                audit_log('upload', 'success', log_id=log_id, source=source,
+                          upload_type=upload_type, size=upload_size,
+                          encrypted=is_encrypted, public=bool(is_public),
+                          client_ip=self.request.remote_ip)
 
                 url = '/plot_app?log='+log_id
                 full_plot_url = get_http_protocol()+'://'+get_domain_name()+url
@@ -358,6 +379,7 @@ class UploadHandler(TornadoRequestHandlerBase):
             except ULogTimeoutException as e:
                 # transient: the storage backend stalled while reading the file,
                 # not a problem with the file itself. 503 signals retryable.
+                failure_reason = 'timeout while reading the stored file'
                 raise CustomHTTPError(
                     503,
                     'The server timed out while reading your file. Your upload '
@@ -365,6 +387,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                     'try uploading again in a moment.') from e
 
             except ULogException as e:
+                failure_reason = 'stored file failed to parse'
                 raise CustomHTTPError(
                     400,
                     'Failed to parse the file. It is most likely corrupt.') from e
@@ -373,5 +396,10 @@ class UploadHandler(TornadoRequestHandlerBase):
                 raise CustomHTTPError(500) from e
 
             finally:
-                self.multipart_streamer.release_parts()
+                # rejections before the file was written already emitted their
+                # own failure record; this covers failures after storage
+                if log_id is not None and not stored:
+                    self._reject_upload(failure_reason, log_id=log_id,
+                                        source=source, size=upload_size)
+                self._release_streamer()
 

@@ -25,10 +25,34 @@ from config import get_db_connection, get_kml_filepath
 #pylint: disable=relative-beyond-top-level
 from .common import CustomHTTPError, TornadoRequestHandlerBase
 
-#pylint: disable=abstract-method, unused-argument
+#pylint: disable=abstract-method, unused-argument, attribute-defined-outside-init
 
 class DownloadHandler(TornadoRequestHandlerBase):
     """ Download log file Tornado request handler """
+
+    def initialize(self):
+        """ initialize the instance """
+        self._pending_audit = None
+
+    def _emit_download_audit(self, outcome, **fields):
+        """ write the audit record for a private-log download exactly once """
+        if self._pending_audit is None:
+            return
+        record = self._pending_audit
+        self._pending_audit = None
+        audit_log('log_download', outcome, **record, **fields)
+
+    def on_finish(self):
+        """ response complete (normal or error): record the real outcome """
+        status = self.get_status()
+        if status < 400:
+            self._emit_download_audit('success')
+        else:
+            self._emit_download_audit('failure', status=status)
+
+    def on_connection_close(self):
+        """ client went away before the response was complete """
+        self._emit_download_audit('failure', reason='connection closed')
 
     def get(self, *args, **kwargs):
         """ GET request callback """
@@ -41,10 +65,9 @@ class DownloadHandler(TornadoRequestHandlerBase):
             raise tornado.web.HTTPError(404, 'Log not found')
 
         if not self.is_public_log(log_id):
-            audit_log('log_download', 'success', log_id=log_id,
-                      download_type=download_type, public=False,
-                      client_ip=self.request.remote_ip)
-
+            # emitted from on_finish / on_connection_close with the outcome
+            self._pending_audit = {'log_id': log_id, 'download_type': download_type,
+                                   'public': False, 'client_ip': self.request.remote_ip}
 
         def get_original_filename(default_value, new_file_suffix):
             """

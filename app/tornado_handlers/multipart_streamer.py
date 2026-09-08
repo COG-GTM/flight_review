@@ -146,6 +146,7 @@ class TemporaryFileStreamedPart(StreamedPart):
         super().__init__(streamer, headers)
         self.is_moved = False
         self.is_finalized = False
+        self.is_released = False
         self.f_out = tempfile.NamedTemporaryFile(dir=tmp_dir, delete=False)
 
     def feed(self, data):
@@ -183,12 +184,13 @@ class TemporaryFileStreamedPart(StreamedPart):
 
         If the temporary file has been moved with the move() method, then this
         method does nothing. Otherwise it closes the temporary file and deletes
-        it from disk."""
+        it from disk. Calling it more than once is safe."""
         try:
-            if not self.is_moved:
+            if not self.is_moved and not self.is_released:
                 self.f_out.close()
                 os.unlink(self.f_out.name)
         finally:
+            self.is_released = True
             super().release()
 
     def get_payload(self):

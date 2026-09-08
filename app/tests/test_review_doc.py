@@ -30,6 +30,31 @@ def _findings_rows(text):
     return rows
 
 
+def _remediated_ids(text):
+    """ ids whose outcome cell is 'satisfied (remediated)' """
+    ids = []
+    for line in text.splitlines():
+        match = re.match(r'^\| (F-\d\d) \| B\d+(?:/B\d+)* \|', line)
+        if match is None:
+            continue
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if cells[8] == 'satisfied (remediated)':
+            ids.append(match.group(1))
+    return ids
+
+
+def _remediation_table_ids(text):
+    """ ids listed in the 'Remediated in this change set' table """
+    section = text.split('## Remediated in this change set', 1)[1]
+    section = section.split('\n## ', 1)[0]
+    ids = set()
+    for line in section.splitlines():
+        match = re.match(r'^\| ((?:F-\d\d(?:, )?)+) \|', line)
+        if match is not None:
+            ids.update(re.findall(r'F-\d\d', match.group(1)))
+    return ids
+
+
 def _totals_rows(text):
     """ {outcome: (count, [ids])} from the outcome totals table """
     totals = {}
@@ -67,6 +92,19 @@ def test_totals_match_findings_table():
         assert count == len(expected_ids), outcome
         assert sorted(listed_ids) == expected_ids, outcome
     assert sum(count for count, _ in totals.values()) == len(rows)
+
+
+def test_remediated_findings_are_consistent():
+    """ the '(N of these were remediated ...)' note, the remediation table and
+    the 'satisfied (remediated)' rows all agree """
+    text = _read_doc()
+    remediated = _remediated_ids(text)
+    assert len(remediated) == 11
+    note = re.search(r'\((\d+) of these were remediated in this change set: ([^)]*)\)', text)
+    assert note is not None
+    assert int(note.group(1)) == len(remediated)
+    assert sorted(re.findall(r'F-\d\d', note.group(2))) == sorted(remediated)
+    assert _remediation_table_ids(text) == set(remediated)
 
 
 def test_every_boundary_has_an_outcome():

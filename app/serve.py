@@ -29,7 +29,8 @@ from tornado_handlers.radio_controller import RadioControllerHandler
 from tornado_handlers.error_labels import UpdateErrorLabelHandler
 
 from helper import set_log_id_is_filename, print_cache_info #pylint: disable=C0411
-from config import debug_print_timing, get_overview_img_filepath #pylint: disable=C0411
+from config import debug_print_timing, get_overview_img_filepath, \
+    get_max_upload_size #pylint: disable=C0411
 
 #pylint: disable=invalid-name
 
@@ -93,8 +94,10 @@ if args.allow_websocket_origin is not None:
     server_kwargs['allow_websocket_origin'] = args.allow_websocket_origin
 server_kwargs['websocket_max_message_size'] = 100 * 1024 * 1024
 
-# increase the maximum upload size (default is 100MB)
-server_kwargs['http_server_kwargs'] = {'max_buffer_size': 300 * 1024 * 1024}
+# the HTTP server must be able to buffer the largest accepted upload
+# (default is 100MB); the per-request limit is enforced in the upload handler
+server_kwargs['http_server_kwargs'] = {
+    'max_buffer_size': max(300 * 1024 * 1024, get_max_upload_size())}
 
 
 show_ulog_file = False
