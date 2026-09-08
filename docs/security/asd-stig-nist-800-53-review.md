@@ -175,6 +175,7 @@ The following cannot be determined from the repository and are recorded as
 8. **Backup and contingency planning (CP-9/CP-10, V-222636/V-222638).** Backup interval and restore testing for `data/` (SQLite DB and ULog storage), and the contingency plan for the service.
 9. **Vulnerability management (F-26, RA-5/SI-2).** Whether dependency scanning (SCA) and image scanning run outside this repository's CI, and the patch cadence for the `ubuntu:noble` base image and Python packages.
 10. **Provider-side token restrictions (F-18).** Whether the Mapbox / Cesium Ion tokens configured in production are URL/domain-restricted.
+11. **Upload limit pairing (F-02, CM-6).** Whether the deployed nginx `client_max_body_size` matches the configured `max_upload_size_mb`; the two live in different artifacts and the application cannot enforce the pairing (a lower proxy value is the safe direction).
 
 ## Method
 
