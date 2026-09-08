@@ -9,22 +9,23 @@ import os
 from html import escape
 import sys
 import uuid
-import binascii
 import tornado.web
 from tornado.ioloop import IOLoop
 
-from pyulog import ULog
 from pyulog.px4 import PX4ULog
 
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from db_entry import DBVehicleData, DBData
 from config import get_db_connection, get_http_protocol, get_domain_name, \
-    email_notifications_config, get_ulge_private_key_path
+    email_notifications_config, get_ulge_private_key_path, get_max_upload_size
 from helper import get_total_flight_time, validate_url, get_log_filename, \
     load_ulog_file, get_airframe_name, ULogException, ULogTimeoutException, \
     decrypt_ulge_payload, is_valid_email, is_valid_ulog
 from overview_generator import generate_overview_img_from_id
+from security import is_ulog_header, ULOG_HEADER_LEN, generate_token, \
+    parse_content_length
+from audit import audit_log, new_correlation_id, log_server_error
 
 
 #pylint: disable=relative-beyond-top-level
@@ -85,18 +86,96 @@ class UploadHandler(TornadoRequestHandlerBase):
     def initialize(self):
         """ initialize the instance """
         self.multipart_streamer = None
+        self.upload_audited = False # one audit record per upload attempt
+        self.stored_upload = None # fields of the committed upload, recorded on finish
 
     def prepare(self):
         """ called before a new request """
         if self.request.method.upper() == 'POST':
-            if 'expected_size' in self.request.arguments:
-                self.request.connection.set_max_body_size(
-                    int(self.get_argument('expected_size')))
-            try:
-                total = int(self.request.headers.get("Content-Length", "0"))
-            except KeyError:
-                total = 0
+            max_size = get_max_upload_size()
+            total = parse_content_length(self.request.headers.get('Content-Length'))
+            if total is None:
+                self._reject_upload('missing or malformed Content-Length')
+                raise CustomHTTPError(411, 'Length Required')
+            if total == 0:
+                self._reject_upload('empty request body')
+                raise CustomHTTPError(400, 'Invalid File')
+            if total > max_size:
+                self._reject_upload('request body exceeds max_upload_size', size=total)
+                raise CustomHTTPError(413, 'File too large')
+            # the limit is server-configured only (the client-supplied
+            # 'expected_size' argument is intentionally not used)
+            self.request.connection.set_max_body_size(max_size)
             self.multipart_streamer = MultiPartStreamer(total)
+
+    def _reject_upload(self, reason, **fields):
+        """ audit record for a rejected upload (no-op if this attempt has
+            already been recorded) """
+        if self.upload_audited:
+            return
+        self.upload_audited = True
+        audit_log('upload', 'failure', reason=reason,
+                  client_ip=self.request.remote_ip, **fields)
+
+    def _discard_stored_file(self, file_name):
+        """ remove a log file that was written to storage but whose upload did
+            not complete (parse or DB failure); never raises """
+        try:
+            os.remove(file_name)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            log_server_error(new_correlation_id(),
+                             'failed to remove incomplete upload %s' % file_name,
+                             exc_info=sys.exc_info())
+
+    def _audit_stored_upload(self, outcome, **fields):
+        """ the single audit record for an upload whose log was committed;
+            outcome is that of the whole request """
+        if self.upload_audited or self.stored_upload is None:
+            return
+        self.upload_audited = True
+        audit_log('upload', outcome, **self.stored_upload, **fields,
+                  client_ip=self.request.remote_ip)
+
+    def _release_streamer(self):
+        """ delete the multipart temporary files; safe to call repeatedly. On
+            failure the streamer is kept so a later call retries """
+        if self.multipart_streamer is None:
+            return
+        try:
+            self.multipart_streamer.release_parts()
+        except OSError:
+            log_server_error(new_correlation_id(),
+                             'failed to remove multipart temporary files',
+                             exc_info=sys.exc_info())
+            return
+        self.multipart_streamer = None
+
+    def on_connection_close(self):
+        """ client went away before the response was complete """
+        if self.stored_upload is not None:
+            self._audit_stored_upload('failure', reason='connection closed', stored=True)
+        elif self.multipart_streamer is not None:
+            self._reject_upload('connection closed before upload completed')
+        self._release_streamer()
+
+    def on_finish(self):
+        """ response complete (normal or error): record the request outcome.
+            Covers a committed upload (success, or failure with `stored=True`
+            if a later step failed) and POSTs that failed before any record was
+            written (e.g. multipart parse error in data_received, so post()
+            never ran) """
+        status = self.get_status()
+        if self.request.method.upper() == 'POST':
+            if status < 400:
+                self._audit_stored_upload('success')
+            elif self.stored_upload is not None:
+                self._audit_stored_upload('failure', reason='request failed after storage',
+                                          status=status, stored=True)
+            else:
+                self._reject_upload('request failed', status=status)
+        self._release_streamer()
 
     def data_received(self, chunk):
         """ called whenever new data is received """
@@ -120,6 +199,12 @@ class UploadHandler(TornadoRequestHandlerBase):
     def post(self, *args, **kwargs):
         """ POST request callback """
         if self.multipart_streamer:
+            log_id = None # set once the file has been written to log storage
+            new_file_name = None
+            stored = False # set once the DB row is committed
+            failure_reason = 'internal error'
+            source = 'webui'
+            upload_size = None
             try:
                 self.multipart_streamer.data_complete()
                 form_data = self.multipart_streamer.get_values(
@@ -132,7 +217,6 @@ class UploadHandler(TornadoRequestHandlerBase):
                 upload_type = 'personal'
                 if 'type' in form_data:
                     upload_type = form_data['type'].decode("utf-8")
-                source = 'webui'
                 title = '' # may be used in future...
                 if 'source' in form_data:
                     source = form_data['source'].decode("utf-8")
@@ -181,24 +265,33 @@ class UploadHandler(TornadoRequestHandlerBase):
                         if form_data['public'].decode("utf-8") == 'true':
                             is_public = 1
 
-                file_obj = self.multipart_streamer.get_parts_by_name('filearg')[0]
+                file_parts = self.multipart_streamer.get_parts_by_name('filearg')
+                if len(file_parts) == 0:
+                    self._reject_upload('no file part', source=source)
+                    raise CustomHTTPError(400, 'Invalid File')
+                file_obj = file_parts[0]
                 upload_file_name = file_obj.get_filename()
+                upload_size = file_obj.get_size()
 
                 # check if the file is encrypted
                 ulge_key_path = get_ulge_private_key_path()
-                if ulge_key_path and upload_file_name.lower().endswith('.ulge'):
+                is_encrypted = bool(ulge_key_path) and upload_file_name.lower().endswith('.ulge')
+                if is_encrypted:
                     file_payload = file_obj.get_payload()  # full content as bytes
                     try:
-                        decrypted_data = decrypt_ulge_payload(
-                        file_payload,
-                        get_ulge_private_key_path()
-                    )
-
+                        decrypted_data = decrypt_ulge_payload(file_payload, ulge_key_path)
                     except Exception as e:
-                        raise CustomHTTPError(400, f"Decryption failed: {str(e)}") from e
+                        correlation_id = new_correlation_id()
+                        log_server_error(correlation_id, 'ulge decryption failed',
+                                         exc_info=sys.exc_info())
+                        self._reject_upload('ulge decryption failed', source=source,
+                                            size=upload_size, correlation_id=correlation_id)
+                        raise CustomHTTPError(400, 'Invalid File') from e
 
-                    if decrypted_data[:len(ULog.HEADER_BYTES)] != ULog.HEADER_BYTES:
-                        raise CustomHTTPError(400, "Decrypted file is not a valid ULog")
+                    if not is_ulog_header(decrypted_data[:ULOG_HEADER_LEN]):
+                        self._reject_upload('decrypted content is not a ULog',
+                                            source=source, size=upload_size)
+                        raise CustomHTTPError(400, 'Invalid File')
 
                     # Write decrypted .ulg to disk
                     log_id, new_file_name = self._generate_unique_log_filename()
@@ -206,16 +299,14 @@ class UploadHandler(TornadoRequestHandlerBase):
                     with open(new_file_name, 'wb') as output_file:
                         output_file.write(decrypted_data)
 
-                    print(f"Decryption successful for {upload_file_name}, saved to {new_file_name}")
-
                 else:
                     # Regular .ulg file
-                    log_id, new_file_name = self._generate_unique_log_filename()
-
-                    header_len = len(ULog.HEADER_BYTES)
-                    if file_obj.get_payload_partial(header_len) != ULog.HEADER_BYTES:
+                    if not is_ulog_header(file_obj.get_payload_partial(ULOG_HEADER_LEN)):
+                        self._reject_upload('missing ULog header', source=source,
+                                            size=upload_size)
                         raise CustomHTTPError(400, 'Invalid File')
 
+                    log_id, new_file_name = self._generate_unique_log_filename()
                     print('Moving uploaded file to', new_file_name)
                     file_obj.move(new_file_name)
 
@@ -224,7 +315,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                     pass
 
                 # generate a token: secure random string (url-safe)
-                token = str(binascii.hexlify(os.urandom(16)), 'ascii')
+                token = generate_token()
 
                 # Load the ulog file but only if not uploaded via CI.
                 # Then we open the DB connection.
@@ -256,6 +347,12 @@ class UploadHandler(TornadoRequestHandlerBase):
                     cur.close()
                 finally:
                     con.close()
+
+                stored = True
+                # the record is written from on_finish with the request outcome
+                self.stored_upload = {'log_id': log_id, 'source': source,
+                                      'upload_type': upload_type, 'size': upload_size,
+                                      'encrypted': is_encrypted, 'public': bool(is_public)}
 
                 url = '/plot_app?log='+log_id
                 full_plot_url = get_http_protocol()+'://'+get_domain_name()+url
@@ -337,6 +434,7 @@ class UploadHandler(TornadoRequestHandlerBase):
             except ULogTimeoutException as e:
                 # transient: the storage backend stalled while reading the file,
                 # not a problem with the file itself. 503 signals retryable.
+                failure_reason = 'timeout while reading the stored file'
                 raise CustomHTTPError(
                     503,
                     'The server timed out while reading your file. Your upload '
@@ -344,14 +442,21 @@ class UploadHandler(TornadoRequestHandlerBase):
                     'try uploading again in a moment.') from e
 
             except ULogException as e:
+                failure_reason = 'stored file failed to parse'
                 raise CustomHTTPError(
                     400,
                     'Failed to parse the file. It is most likely corrupt.') from e
             except Exception as e:
-                print('Error when handling POST data', sys.exc_info()[0],
-                      sys.exc_info()[1])
+                # detail is logged with a correlation id by write_error
                 raise CustomHTTPError(500) from e
 
             finally:
-                self.multipart_streamer.release_parts()
+                # explicit rejections already emitted their record; this
+                # covers unexpected failures before and after storage
+                if not stored:
+                    if log_id is not None:
+                        self._discard_stored_file(new_file_name)
+                    self._reject_upload(failure_reason, log_id=log_id,
+                                        source=source, size=upload_size)
+                self._release_streamer()
 

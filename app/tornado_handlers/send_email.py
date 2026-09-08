@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'plot_app'))
 from config import *
 from helper import is_valid_email
+from security import sanitize_header_value
 
 
 def send_notification_email(email_address, plot_url, delete_url, info):
@@ -31,8 +32,6 @@ def send_notification_email(email_address, plot_url, delete_url, info):
             description = "{:} - {:}".format(description, info['vehicle_name'])
 
     subject = "Log File uploaded ({:})".format(description)
-    if len(subject) > 78: # subject should not be longer than that
-        subject = subject[:78]
     destination = [email_address]
 
     content = """\
@@ -94,21 +93,25 @@ Use the following link to delete the log:
     subject = "Flight Report uploaded ({:})".format(description)
     if info['rating'] == 'crash_sw_hw':
         subject = '[CRASH] '+subject
-    if len(subject) > 78: # subject should not be longer than that
-        subject = subject[:78]
 
     return _send_email(destination, subject, content)
 
 
 def _send_email(destination, subject, content):
-    """ common method for sending an email to one or more destinations """
+    """ common method for sending an email to one or more destinations.
+    Header values are sanitized (no CR/LF, length-limited) and every
+    destination must be a syntactically valid address. """
+
+    destination = [addr for addr in destination if is_valid_email(addr)]
+    if len(destination) == 0:
+        return False
 
     # typical values for text_subtype are plain, html, xml
     text_subtype = 'plain'
 
     try:
         msg = MIMEText(content, text_subtype)
-        msg['Subject'] = subject
+        msg['Subject'] = sanitize_header_value(subject)
         sender = email_config['sender']
         msg['From'] = sender # some SMTP servers will do this automatically
 

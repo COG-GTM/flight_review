@@ -146,6 +146,7 @@ class TemporaryFileStreamedPart(StreamedPart):
         super().__init__(streamer, headers)
         self.is_moved = False
         self.is_finalized = False
+        self.is_released = False
         self.f_out = tempfile.NamedTemporaryFile(dir=tmp_dir, delete=False)
 
     def feed(self, data):
@@ -183,11 +184,16 @@ class TemporaryFileStreamedPart(StreamedPart):
 
         If the temporary file has been moved with the move() method, then this
         method does nothing. Otherwise it closes the temporary file and deletes
-        it from disk."""
+        it from disk. Calling it more than once is safe; if deleting fails the
+        part stays unreleased so a later call retries."""
         try:
-            if not self.is_moved:
+            if not self.is_moved and not self.is_released:
                 self.f_out.close()
-                os.unlink(self.f_out.name)
+                try:
+                    os.unlink(self.f_out.name)
+                except FileNotFoundError:
+                    pass
+                self.is_released = True
         finally:
             super().release()
 
@@ -387,9 +393,18 @@ class MultiPartStreamer:
     def release_parts(self):
         """Call this to release resources for all parts created.
 
-         This method will call the release() method on all parts created for the stream."""
+         This method will call the release() method on all parts created for the
+         stream. Every part is attempted even if one fails; the first error is
+         re-raised afterwards."""
+        first_error = None
         for part in self.parts:
-            part.release()
+            try:
+                part.release()
+            except OSError as e:
+                if first_error is None:
+                    first_error = e
+        if first_error is not None:
+            raise first_error
 
     def get_parts_by_name(self, part_name):
         """Get a parts by name.
