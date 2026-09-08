@@ -66,6 +66,16 @@ def is_ulge_header(data):
         bytes(data[:len(ULGE_MAGIC)]) == ULGE_MAGIC
 
 
+def parse_content_length(value):
+    """ declared request body size as int, or None if the Content-Length
+        header is missing or not a plain non-negative decimal integer """
+    if not isinstance(value, str):
+        return None
+    if re.fullmatch(r'[0-9]+', value.strip()) is None:
+        return None
+    return int(value)
+
+
 def generate_token():
     """ url-safe secret token for the per-log edit/delete link """
     return secrets.token_hex(TOKEN_NUM_BYTES)

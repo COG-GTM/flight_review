@@ -186,3 +186,20 @@ def test_sanitize_header_value(value, expected):
 def test_sanitize_header_value_truncates():
     assert len(sanitize_header_value('x' * 500)) == 78
     assert sanitize_header_value('x' * 500, max_length=10) == 'x' * 10
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('0', 0),
+    ('1234', 1234),
+    (' 42 ', 42),
+    (None, None),
+    ('', None),
+    ('-1', None),
+    ('12abc', None),
+    ('1e3', None),
+    ('0x10', None),
+    ('\u0661\u0662', None),
+    (1234, None),
+])
+def test_parse_content_length(value, expected):
+    assert security.parse_content_length(value) == expected

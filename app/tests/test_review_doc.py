@@ -110,7 +110,7 @@ def test_remediated_findings_are_consistent():
 def test_every_boundary_has_an_outcome():
     """ B1..B13 each appear in at least one findings row """
     rows = _findings_rows(_read_doc())
-    assert len(rows) == 28
+    assert len(rows) == 29
     covered = set()
     for _, boundary, _ in rows:
         covered.update(boundary.split('/'))

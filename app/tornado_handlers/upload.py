@@ -23,7 +23,8 @@ from helper import get_total_flight_time, validate_url, get_log_filename, \
     load_ulog_file, get_airframe_name, ULogException, ULogTimeoutException, \
     decrypt_ulge_payload, is_valid_email, is_valid_ulog
 from overview_generator import generate_overview_img_from_id
-from security import is_ulog_header, ULOG_HEADER_LEN, generate_token
+from security import is_ulog_header, ULOG_HEADER_LEN, generate_token, \
+    parse_content_length
 from audit import audit_log, new_correlation_id, log_server_error
 
 
@@ -90,10 +91,13 @@ class UploadHandler(TornadoRequestHandlerBase):
         """ called before a new request """
         if self.request.method.upper() == 'POST':
             max_size = get_max_upload_size()
-            try:
-                total = int(self.request.headers.get("Content-Length", "0"))
-            except ValueError:
-                total = 0
+            total = parse_content_length(self.request.headers.get('Content-Length'))
+            if total is None:
+                self._reject_upload('missing or malformed Content-Length')
+                raise CustomHTTPError(411, 'Length Required')
+            if total == 0:
+                self._reject_upload('empty request body')
+                raise CustomHTTPError(400, 'Invalid File')
             if total > max_size:
                 self._reject_upload('request body exceeds max_upload_size', size=total)
                 raise CustomHTTPError(413, 'File too large')
@@ -106,6 +110,18 @@ class UploadHandler(TornadoRequestHandlerBase):
         """ audit record for a rejected upload """
         audit_log('upload', 'failure', reason=reason,
                   client_ip=self.request.remote_ip, **fields)
+
+    def _discard_stored_file(self, file_name):
+        """ remove a log file that was written to storage but whose upload did
+            not complete (parse or DB failure); never raises """
+        try:
+            os.remove(file_name)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            log_server_error(new_correlation_id(),
+                             'failed to remove incomplete upload %s' % file_name,
+                             exc_info=sys.exc_info())
 
     def _release_streamer(self):
         """ delete the multipart temporary files; safe to call repeatedly """
@@ -146,6 +162,7 @@ class UploadHandler(TornadoRequestHandlerBase):
         """ POST request callback """
         if self.multipart_streamer:
             log_id = None # set once the file has been written to log storage
+            new_file_name = None
             stored = False # set once the DB row is committed
             failure_reason = 'internal error'
             source = 'webui'
@@ -399,6 +416,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                 # rejections before the file was written already emitted their
                 # own failure record; this covers failures after storage
                 if log_id is not None and not stored:
+                    self._discard_stored_file(new_file_name)
                     self._reject_upload(failure_reason, log_id=log_id,
                                         source=source, size=upload_size)
                 self._release_streamer()
