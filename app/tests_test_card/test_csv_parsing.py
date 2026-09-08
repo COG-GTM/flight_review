@@ -1,4 +1,5 @@
 """ tests for the test card CSV parser """
+import csv
 import os
 
 import pytest
@@ -127,6 +128,14 @@ def test_error_reports_correct_line_number():
 def test_invalid_utf8():
     with pytest.raises(reduction.TestCardError, match='UTF-8'):
         parse_test_card_csv(HEADER.encode() + b'\nTP-01,\xff\xfe,0,1,,,,\n')
+
+
+def test_field_above_csv_parser_limit_is_a_test_card_error():
+    huge = 'x' * (csv.field_size_limit() + 1)
+    with pytest.raises(reduction.TestCardError, match='line 3: malformed CSV'):
+        parse_test_card_csv(_csv('TP-01,x,0,5,,,,', 'TP-02,' + huge + ',5,10,,,,'))
+    with pytest.raises(reduction.TestCardError, match='line 1: malformed CSV'):
+        parse_test_card_csv(huge + ',' + HEADER + '\n')
 
 
 @pytest.mark.parametrize('log_id, valid', [

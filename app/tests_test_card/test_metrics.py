@@ -156,10 +156,13 @@ def test_validity_flags_mask_altitude_samples(synthetic_ulog):
     assert result['metrics']['airspeed_min_mps'] is not None
 
     # neighbouring valid samples are used, invalid ones are not
-    (result,) = _reduce(synthetic_ulog, _point('EDGE', 95, 115))
+    (result,) = _reduce(synthetic_ulog, _point('EDGE', 95, 115, alt_min_m=500.0))
     truth_alt = 220.0 - 2.0 * (np.array([95.0, 110.0, 115.0]) - 60.0)
     assert result['metrics']['alt_max_m'] == pytest.approx(truth_alt[0], abs=1e-3)
     assert result['metrics']['alt_min_m'] == pytest.approx(truth_alt[2], abs=1e-3)
+    # below the band for the whole window, but the 10 s validity gap does not count
+    (exceedance,) = result['exceedances']
+    assert exceedance['seconds'] == pytest.approx(10.0, abs=0.06)
 
 
 def test_airspeed_samples_without_a_valid_source_are_masked(tmp_path):
@@ -172,9 +175,17 @@ def test_airspeed_samples_without_a_valid_source_are_masked(tmp_path):
     assert result['unchecked_limits'] == ['airspeed_max_mps']
     assert result['status'] == STATUS_COMPLETE
     # straddling the window: only valid samples contribute (airspeed = 15 + t/6)
-    (result,) = _reduce(ulog, _point('EDGE', 15, 35))
+    (result,) = _reduce(ulog, _point('EDGE', 15, 35, airspeed_max_mps=10.0))
     assert result['metrics']['airspeed_min_mps'] == pytest.approx(15.0 + 15.0 / 6.0, abs=1e-3)
     assert result['metrics']['airspeed_max_mps'] == pytest.approx(15.0 + 35.0 / 6.0, abs=1e-3)
+    # the limit is busted throughout, but the invalid 10 s must not count:
+    # the last valid sample before the gap is not held across it
+    (exceedance,) = result['exceedances']
+    assert exceedance['seconds'] == pytest.approx(10.0, abs=0.06)
+    # window starting inside the gap: the value in effect at start_s is unknown
+    (result,) = _reduce(ulog, _point('START_IN_GAP', 25, 35, airspeed_max_mps=10.0))
+    (exceedance,) = result['exceedances']
+    assert exceedance['seconds'] == pytest.approx(5.0, abs=0.06)
 
 
 def test_altitude_series_stays_in_one_frame_when_ref_alt_appears(tmp_path):

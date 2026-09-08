@@ -206,6 +206,10 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
     data_plot.add_graph(['baro_alt_meter'], colors8[1:2], ['Barometer Altitude'])
     data_plot.change_dataset('vehicle_global_position')
     data_plot.add_graph(['alt'], colors8[2:3], ['Fused Altitude Estimation'])
+    if not any(elem.name == 'vehicle_global_position' for elem in data):
+        data_plot.change_dataset('vehicle_local_position')
+        data_plot.add_graph([lambda data: ('alt', local_position_altitude(data))],
+                            colors8[2:3], ['Local Position Altitude'])
     data_plot.change_dataset('position_setpoint_triplet')
     data_plot.add_circle(['current.alt'], [plot_config['mission_setpoint_color']],
                         ['Altitude Setpoint'])
@@ -411,7 +415,8 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
 
     # Airspeed vs Ground speed: but only if there's valid airspeed data or a VTOL
     try:
-        if is_vtol or ulog.get_dataset('airspeed') is not None:
+        has_airspeed = any(elem.name in ('airspeed', 'airspeed_validated') for elem in data)
+        if is_vtol or has_airspeed:
             data_plot = DataPlot(data, plot_config, 'vehicle_global_position',
                                  y_axis_label='[m/s]', title='Airspeed',
                                  plot_height='small',

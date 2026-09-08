@@ -68,6 +68,16 @@ def _parse_float(value, column, line_no, required):
     return result
 
 
+def _csv_rows(reader):
+    """ iterate a csv.reader, turning parser errors (e.g. a field above
+    csv.field_size_limit()) into TestCardError """
+    try:
+        yield from reader
+    except csv.Error as exc:
+        raise TestCardError('line {}: malformed CSV ({})'.format(
+            reader.line_num, exc)) from exc
+
+
 def parse_test_card_csv(text):
     """
     Parse test card CSV text into a list of dicts.
@@ -88,6 +98,8 @@ def parse_test_card_csv(text):
         header = next(reader)
     except StopIteration as exc:
         raise TestCardError('test card is empty') from exc
+    except csv.Error as exc:
+        raise TestCardError('line 1: malformed CSV ({})'.format(exc)) from exc
     header = [column.strip() for column in header]
     if header != list(TEST_CARD_COLUMNS):
         raise TestCardError('invalid header: expected "{}"'.format(
@@ -95,7 +107,7 @@ def parse_test_card_csv(text):
 
     points = []
     seen_ids = set()
-    for row in reader:
+    for row in _csv_rows(reader):
         line_no = reader.line_num
         if len(row) == 0 or all(cell.strip() == '' for cell in row):
             continue
@@ -156,28 +168,40 @@ def load_test_card_file(filename):
 class _Series:
     """ a time series (seconds from log start) with samples masked by validity """
 
-    def __init__(self, time_s, values):
+    def __init__(self, time_s, values, gap_time_s=()):
         values = np.asarray(values, dtype=np.float64)
         time_s = np.asarray(time_s, dtype=np.float64)
-        mask = np.isfinite(values) & np.isfinite(time_s)
-        self.time_s = time_s[mask]
-        self.values = values[mask]
+        finite = np.isfinite(values) & np.isfinite(time_s)
+        self.time_s = time_s[finite]
+        self.values = values[finite]
+        # timestamps of invalid samples: a value held until such a time is not
+        # held across it (the metric is unknown from there on)
+        self.gap_time_s = np.sort(np.concatenate((
+            time_s[~finite & np.isfinite(time_s)],
+            np.asarray(gap_time_s, dtype=np.float64))))
+
+    def _subset(self, mask, start_s, end_s):
+        gaps = self.gap_time_s[(self.gap_time_s >= start_s) & (self.gap_time_s <= end_s)]
+        return _Series(self.time_s[mask], self.values[mask], gaps)
 
     def window(self, start_s, end_s):
         """ samples with start_s <= t <= end_s """
         mask = (self.time_s >= start_s) & (self.time_s <= end_s)
-        return _Series(self.time_s[mask], self.values[mask])
+        return self._subset(mask, start_s, end_s)
 
     def hold_window(self, start_s, end_s):
         """
         Like window(), but also includes the last sample before start_s: under
-        zero-order hold that sample is the value in effect at start_s.
+        zero-order hold that sample is the value in effect at start_s (unless
+        an invalid sample lies in between).
         """
         mask = (self.time_s >= start_s) & (self.time_s <= end_s)
         before = np.flatnonzero(self.time_s < start_s)
+        first_s = start_s
         if len(before) > 0:
             mask[before[-1]] = True
-        return _Series(self.time_s[mask], self.values[mask])
+            first_s = self.time_s[before[-1]]
+        return self._subset(mask, first_s, end_s)
 
     def __len__(self):
         return len(self.values)
@@ -185,8 +209,8 @@ class _Series:
     def exceedance_seconds(self, start_s, end_s, predicate):
         """
         Time (s) the predicate holds, integrated over [start_s, end_s] only.
-        Each sample holds its value until the next sample (zero-order hold);
-        the last sample is held until end_s.
+        Each sample holds its value until the next sample, valid or invalid
+        (zero-order hold); the last sample is held until end_s.
         """
         if len(self) == 0:
             return 0.0
@@ -194,6 +218,10 @@ class _Series:
         if not np.any(exceed):
             return 0.0
         next_time = np.append(self.time_s[1:], end_s)
+        if len(self.gap_time_s) > 0:
+            next_gap = np.append(self.gap_time_s, np.inf)[
+                np.searchsorted(self.gap_time_s, self.time_s, side='right')]
+            next_time = np.minimum(next_time, next_gap)
         durations = np.clip(next_time, start_s, end_s) - np.clip(self.time_s, start_s, end_s)
         return float(np.sum(durations[exceed]))
 

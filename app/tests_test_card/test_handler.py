@@ -1,4 +1,5 @@
 """ handler-level tests for /test_card via Tornado's AsyncHTTPTestCase """
+import csv
 import json
 import os
 import shutil
@@ -203,6 +204,15 @@ class TestCardHandlerTest(AsyncHTTPTestCase):
         response = self._upload(self.log_id, HEADER.encode() + b'\nTP-01,x,10,5,,,,\n')
         self.assertEqual(response.code, 400)
         self.assertIn('line 2', json.loads(response.body)['error'])
+
+    def test_field_above_csv_parser_limit_is_a_validation_error(self):
+        # size-compliant body, but one field larger than csv.field_size_limit()
+        content = HEADER.encode() + b'\nTP-01,' + b'x' * (csv.field_size_limit() + 1) + b',10,20,,,,\n'
+        self.assertLess(len(content), MAX_CSV_SIZE)
+        response = self._upload(self.log_id, content)
+        self.assertEqual(response.code, 400)
+        self.assertIn('malformed CSV', json.loads(response.body)['error'])
+        self.assertFalse(os.path.exists(self._card_path(self.log_id)))
 
     def test_malformed_upload_does_not_replace_existing_card(self):
         self.assertEqual(self._upload(self.log_id).code, 201)

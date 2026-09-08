@@ -138,9 +138,11 @@ the `z_valid`/`v_z_valid` flags, altitude is AMSL via `ref_alt` when a
 reference is available and relative otherwise) and `vehicle_attitude` (bank),
 and are reported as "not logged" if a topic is missing (`vehicle_air_data` is
 used for altitude and/or sink rate whenever the estimator has no valid samples
-for it). Limits whose metric has no data inside a window are listed as
-`unchecked_limits` and are not counted as exceedances; windows that extend
-past the end of the log are flagged `clipped`.
+for it). Exceedance seconds are integrated with a zero-order hold inside the
+window only, and a value is never held across an invalid sample. Limits whose
+metric has no data inside a window are listed as `unchecked_limits` and are
+not counted as exceedances; windows that extend past the end of the log are
+flagged `clipped`.
 The data reduction lives in `app/plot_app/test_card.py`, the HTTP
 handler in `app/tornado_handlers/test_card.py`; tests are in
 `app/tests_test_card` (`pytest app/tests_test_card`).

@@ -208,6 +208,14 @@ def plot_flight_modes_background(data_plot, flight_mode_changes, vtol_states=Non
 
 
 
+def local_position_altitude(local_position):
+    """ altitude from a vehicle_local_position dataset's data dict: AMSL
+    (ref_alt - z) if a reference altitude is set, otherwise relative (-z) """
+    if 'ref_alt' in local_position and np.all(np.isfinite(local_position['ref_alt'])):
+        return local_position['ref_alt'] - local_position['z']
+    return -local_position['z']
+
+
 def plot_test_card_windows(data_plot, test_card, log_start_timestamp):
     """ shade the test-point windows of a test card (list of dicts with
     start_s, end_s, test_point_id in seconds from log start) on a DataPlot
