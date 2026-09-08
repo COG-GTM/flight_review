@@ -186,6 +186,18 @@ class TestCardHandlerTest(AsyncHTTPTestCase):
                                        extra_fields=many[:MAX_MULTIPART_PARTS - 1])
         self.assertEqual(self._post(self.log_id, body, content_type).code, 201)
 
+    def test_boundary_like_text_inside_the_csv_is_not_counted_as_parts(self):
+        # descriptions that happen to contain the boundary token are ordinary
+        # content (the CSV is a single part), not multipart fields
+        rows = ''.join('TP-{:02d},see --{} ticket,{},{},,,,\n'.format(
+            i, BOUNDARY, i, i + 1) for i in range(MAX_MULTIPART_PARTS + 4))
+        content = (HEADER + '\n' + rows).encode()
+        self.assertGreater(content.count(b'--' + BOUNDARY.encode()), MAX_MULTIPART_PARTS)
+        response = self._upload(self.log_id, content)
+        self.assertEqual(response.code, 201)
+        with open(self._card_path(self.log_id), 'rb') as stored:
+            self.assertEqual(stored.read(), content)
+
     def test_multipart_without_boundary_is_rejected(self):
         response = self._post(self.log_id, b'x', 'multipart/form-data')
         self.assertEqual(response.code, 400)

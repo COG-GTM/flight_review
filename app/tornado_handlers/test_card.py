@@ -191,7 +191,9 @@ class TestCardHandler(TornadoRequestHandlerBase):
         boundary = _multipart_boundary(content_type)
         if boundary is None:
             raise CustomHTTPError(400, 'Expected a multipart/form-data upload')
-        if body.count(b'--' + boundary) > MAX_MULTIPART_PARTS + 1:
+        # each part starts with a delimiter line; the closing '--boundary--' and
+        # boundary-like text inside a part's content are not counted
+        if body.count(b'--' + boundary + b'\r\n') > MAX_MULTIPART_PARTS:
             raise CustomHTTPError(400, 'Too many multipart fields (max {})'.format(
                 MAX_MULTIPART_PARTS))
         arguments = {}
