@@ -42,6 +42,8 @@ __CESIUM_ENABLE_BING_AERIAL = _conf.get('general', 'cesium_enable_bing_aerial')
 __LOG_CACHE_SIZE = int(_conf.get('general', 'log_cache_size'))
 __LOG_LOAD_TIMEOUT = int(_conf.get('general', 'log_load_timeout'))
 __MAX_UPLOAD_SIZE_MB = int(_conf.get('general', 'max_upload_size_mb', fallback='100'))
+if __MAX_UPLOAD_SIZE_MB < 1:
+    raise ValueError('config: max_upload_size_mb must be a positive integer (MiB)')
 __DB_FILENAME_CUSTOM = _conf.get('general', 'db_filename')
 
 __STORAGE_PATH = _conf.get('general', 'storage_path')

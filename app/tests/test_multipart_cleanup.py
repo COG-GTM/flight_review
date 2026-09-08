@@ -2,6 +2,8 @@
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 '../tornado_handlers'))
 #pylint: disable=wrong-import-position
@@ -71,3 +73,72 @@ def test_release_keeps_moved_file(tmp_path):
     assert os.path.exists(target)
     with open(target, 'rb') as stored:
         assert stored.read() == b'abc'
+
+
+def test_release_retries_after_failed_unlink(monkeypatch):
+    """ a transient unlink failure must not mark the part released: the next
+    release() call deletes the file """
+    body = _part_header('filearg', 'log.ulg') + b'abc\r\n--' + BOUNDARY + b'--\r\n'
+    streamer = MultiPartStreamer(len(body))
+    streamer.data_received(body)
+    streamer.data_complete()
+    part = streamer.parts[0]
+    real_unlink = os.unlink
+    calls = []
+
+    def _flaky_unlink(path):
+        calls.append(path)
+        if len(calls) == 1:
+            raise PermissionError('busy')
+        real_unlink(path)
+    monkeypatch.setattr(os, 'unlink', _flaky_unlink)
+
+    with pytest.raises(OSError):
+        streamer.release_parts()
+    assert not part.is_released
+    assert os.path.exists(part.f_out.name)
+
+    streamer.release_parts()
+    assert part.is_released
+    assert not os.path.exists(part.f_out.name)
+    assert len(calls) == 2
+
+
+def test_release_treats_missing_file_as_released():
+    """ a temporary file already removed by someone else is not an error """
+    body = _part_header('filearg', 'log.ulg') + b'abc\r\n--' + BOUNDARY + b'--\r\n'
+    streamer = MultiPartStreamer(len(body))
+    streamer.data_received(body)
+    streamer.data_complete()
+    part = streamer.parts[0]
+    part.f_out.close()
+    os.unlink(part.f_out.name)
+
+    streamer.release_parts()
+    assert part.is_released
+
+
+def test_release_parts_attempts_every_part(monkeypatch):
+    """ one failing part does not stop the others from being released """
+    body = (_part_header('description') + b'hello\r\n' +
+            _part_header('filearg', 'log.ulg') + b'abc\r\n--' + BOUNDARY + b'--\r\n')
+    streamer = MultiPartStreamer(len(body))
+    streamer.data_received(body)
+    streamer.data_complete()
+    files = _temp_files(streamer)
+    assert len(files) == 2
+    real_unlink = os.unlink
+
+    def _fail_first(path):
+        if path == files[0]:
+            raise PermissionError('busy')
+        real_unlink(path)
+    monkeypatch.setattr(os, 'unlink', _fail_first)
+
+    with pytest.raises(OSError):
+        streamer.release_parts()
+    assert os.path.exists(files[0])
+    assert not os.path.exists(files[1])
+    monkeypatch.undo()
+    streamer.release_parts()
+    assert not os.path.exists(files[0])

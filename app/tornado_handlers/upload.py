@@ -87,6 +87,7 @@ class UploadHandler(TornadoRequestHandlerBase):
         """ initialize the instance """
         self.multipart_streamer = None
         self.upload_audited = False # one audit record per upload attempt
+        self.stored_upload = None # fields of the committed upload, recorded on finish
 
     def prepare(self):
         """ called before a new request """
@@ -128,25 +129,52 @@ class UploadHandler(TornadoRequestHandlerBase):
                              'failed to remove incomplete upload %s' % file_name,
                              exc_info=sys.exc_info())
 
+    def _audit_stored_upload(self, outcome, **fields):
+        """ the single audit record for an upload whose log was committed;
+            outcome is that of the whole request """
+        if self.upload_audited or self.stored_upload is None:
+            return
+        self.upload_audited = True
+        audit_log('upload', outcome, **self.stored_upload, **fields,
+                  client_ip=self.request.remote_ip)
+
     def _release_streamer(self):
-        """ delete the multipart temporary files; safe to call repeatedly """
-        streamer, self.multipart_streamer = self.multipart_streamer, None
-        if streamer is not None:
-            streamer.release_parts()
+        """ delete the multipart temporary files; safe to call repeatedly. On
+            failure the streamer is kept so a later call retries """
+        if self.multipart_streamer is None:
+            return
+        try:
+            self.multipart_streamer.release_parts()
+        except OSError:
+            log_server_error(new_correlation_id(),
+                             'failed to remove multipart temporary files',
+                             exc_info=sys.exc_info())
+            return
+        self.multipart_streamer = None
 
     def on_connection_close(self):
-        """ client went away (or the body limit was hit) before post() ran """
-        if self.multipart_streamer is not None:
+        """ client went away before the response was complete """
+        if self.stored_upload is not None:
+            self._audit_stored_upload('failure', reason='connection closed', stored=True)
+        elif self.multipart_streamer is not None:
             self._reject_upload('connection closed before upload completed')
         self._release_streamer()
 
     def on_finish(self):
-        """ response complete (normal or error); a failed POST that was not
-            recorded yet (e.g. multipart parse error in data_received, so
-            post() never ran) gets its failure record here """
+        """ response complete (normal or error): record the request outcome.
+            Covers a committed upload (success, or failure with `stored=True`
+            if a later step failed) and POSTs that failed before any record was
+            written (e.g. multipart parse error in data_received, so post()
+            never ran) """
         status = self.get_status()
-        if self.request.method.upper() == 'POST' and status >= 400:
-            self._reject_upload('request failed', status=status)
+        if self.request.method.upper() == 'POST':
+            if status < 400:
+                self._audit_stored_upload('success')
+            elif self.stored_upload is not None:
+                self._audit_stored_upload('failure', reason='request failed after storage',
+                                          status=status, stored=True)
+            else:
+                self._reject_upload('request failed', status=status)
         self._release_streamer()
 
     def data_received(self, chunk):
@@ -321,11 +349,10 @@ class UploadHandler(TornadoRequestHandlerBase):
                     con.close()
 
                 stored = True
-                self.upload_audited = True
-                audit_log('upload', 'success', log_id=log_id, source=source,
-                          upload_type=upload_type, size=upload_size,
-                          encrypted=is_encrypted, public=bool(is_public),
-                          client_ip=self.request.remote_ip)
+                # the record is written from on_finish with the request outcome
+                self.stored_upload = {'log_id': log_id, 'source': source,
+                                      'upload_type': upload_type, 'size': upload_size,
+                                      'encrypted': is_encrypted, 'public': bool(is_public)}
 
                 url = '/plot_app?log='+log_id
                 full_plot_url = get_http_protocol()+'://'+get_domain_name()+url
