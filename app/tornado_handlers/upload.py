@@ -86,6 +86,7 @@ class UploadHandler(TornadoRequestHandlerBase):
     def initialize(self):
         """ initialize the instance """
         self.multipart_streamer = None
+        self.upload_audited = False # one audit record per upload attempt
 
     def prepare(self):
         """ called before a new request """
@@ -107,7 +108,11 @@ class UploadHandler(TornadoRequestHandlerBase):
             self.multipart_streamer = MultiPartStreamer(total)
 
     def _reject_upload(self, reason, **fields):
-        """ audit record for a rejected upload """
+        """ audit record for a rejected upload (no-op if this attempt has
+            already been recorded) """
+        if self.upload_audited:
+            return
+        self.upload_audited = True
         audit_log('upload', 'failure', reason=reason,
                   client_ip=self.request.remote_ip, **fields)
 
@@ -136,7 +141,12 @@ class UploadHandler(TornadoRequestHandlerBase):
         self._release_streamer()
 
     def on_finish(self):
-        """ response complete (normal or error) """
+        """ response complete (normal or error); a failed POST that was not
+            recorded yet (e.g. multipart parse error in data_received, so
+            post() never ran) gets its failure record here """
+        status = self.get_status()
+        if self.request.method.upper() == 'POST' and status >= 400:
+            self._reject_upload('request failed', status=status)
         self._release_streamer()
 
     def data_received(self, chunk):
@@ -311,6 +321,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                     con.close()
 
                 stored = True
+                self.upload_audited = True
                 audit_log('upload', 'success', log_id=log_id, source=source,
                           upload_type=upload_type, size=upload_size,
                           encrypted=is_encrypted, public=bool(is_public),
@@ -413,10 +424,11 @@ class UploadHandler(TornadoRequestHandlerBase):
                 raise CustomHTTPError(500) from e
 
             finally:
-                # rejections before the file was written already emitted their
-                # own failure record; this covers failures after storage
-                if log_id is not None and not stored:
-                    self._discard_stored_file(new_file_name)
+                # explicit rejections already emitted their record; this
+                # covers unexpected failures before and after storage
+                if not stored:
+                    if log_id is not None:
+                        self._discard_stored_file(new_file_name)
                     self._reject_upload(failure_reason, log_id=log_id,
                                         source=source, size=upload_size)
                 self._release_streamer()

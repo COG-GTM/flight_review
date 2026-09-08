@@ -143,7 +143,7 @@ table.
 | F-13 | `json_for_script` used for `initial_search` in `browse.py`/`browse.html`. | `tests/test_security.py` |
 | F-15 | `sanitize_header_value` applied to mail `Subject`; recipients filtered through `is_valid_email`. | `tests/test_security.py` |
 | F-19 | `common.write_error`: generic body + correlation id, `audit.log_server_error` server-side with traceback on 5xx; five handlers moved onto `TornadoRequestHandlerBase`. | `tests/test_audit.py` |
-| F-21 | `plot_app/audit.py` `audit_log(event, outcome, **fields)` -> JSON line via `logging`; events: `upload` (success after the DB row is committed; failure with reason, including post-storage failures), `log_delete` (success/failure), `log_edit` (failure: malformed/mismatched token), `log_download` (private log; outcome recorded from `on_finish`/`on_connection_close` once the response completes). | `tests/test_audit.py` |
+| F-21 | `plot_app/audit.py` `audit_log(event, outcome, **fields)` -> JSON line via `logging`; events: `upload` (exactly one record per POST attempt: success after the DB row is committed; otherwise failure with reason, including post-storage failures and requests that fail before `post()` runs, recorded from `on_finish`), `log_delete` (success/failure), `log_edit` (failure: malformed/mismatched token), `log_download` (private log; outcome recorded from `on_finish`/`on_connection_close` once the response completes; public/private classification is best-effort and DB errors count as private). | `tests/test_audit.py`, `tests/test_upload_cleanup.py`, `tests/test_download_public_check.py` |
 
 Run the tests with:
 

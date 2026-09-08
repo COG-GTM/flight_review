@@ -271,10 +271,11 @@ class DownloadHandler(TornadoRequestHandlerBase):
 
     @staticmethod
     def is_public_log(log_id):
-        """ True if the log is flagged public in the DB (unknown logs count
-        as private) """
-        con = get_db_connection()
+        """ True if the log is flagged public in the DB (unknown logs and DB
+        errors count as private; never raises) """
+        con = None
         try:
+            con = get_db_connection()
             cur = con.cursor()
             cur.execute('select Public from Logs where Id = ?', [log_id])
             db_tuple = cur.fetchone()
@@ -282,5 +283,6 @@ class DownloadHandler(TornadoRequestHandlerBase):
         except sqlite3.Error:
             return False
         finally:
-            con.close()
+            if con is not None:
+                con.close()
 
