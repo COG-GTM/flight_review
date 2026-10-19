@@ -34,7 +34,7 @@ Out of scope: the host OS and Docker engine, the SQLite data files under `data/`
 | nginx image SBOM | CycloneDX + SPDX | 154 | Debian 13.7 OS record, 152 deb, 1 maven |
 | certbot image SBOM | CycloneDX + SPDX | 1,126 | Alpine 3.23.5; 1,038 of the components are Rust crates compiled into the `cryptography` wheel and are reported by the Cargo auditable cataloger |
 | Source-tree SBOM | CycloneDX + SPDX | 8 | `bokeh==3.8.2` (the only pinned requirement) and the GitHub Actions used by CI |
-| Browser-runtime SBOM | CycloneDX 1.5 JSON | 18 libraries + 10 services | Hand-derived from templates; records CDN URL, Subresource Integrity presence, and SHA-256 of vendored files |
+| Browser-runtime SBOM | CycloneDX 1.5 JSON | 19 libraries + 11 services | Hand-derived from templates; records CDN URL, Subresource Integrity presence, and SHA-256 of vendored files |
 | System manifest | CycloneDX 1.5 JSON | 5 | Links each sub-BOM by path and SHA-256 |
 | Vulnerability reports | grype JSON + table, OpenVEX skeleton | — | grype 0.120.1, DB built 2026-10-19 |
 | Generation record, checksums | Markdown, `SHA256SUMS` | — | Reproducibility and integrity |

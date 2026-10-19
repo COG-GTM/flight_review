@@ -47,7 +47,7 @@ scan() {
     echo "==> syft $name ($target)"
     syft scan "$target" "$@" \
         --source-name "$name" --source-version "$version" \
-        -o "cyclonedx-json=$OUT/cyclonedx/$name.cdx.json" \
+        -o "cyclonedx-json@1.5=$OUT/cyclonedx/$name.cdx.json" \
         -o "spdx-json=$OUT/spdx/$name.spdx.json" -q
     # syft's --source-supplier stamps every third-party component with the same
     # supplier, which misstates the NTIA "supplier" element; set it on the
@@ -82,6 +82,22 @@ done
 
 image_id() { docker image inspect --format '{{.Id}}' "$1"; }
 base_digest() { docker image inspect --format '{{index .RepoDigests 0}}' "$1" 2>/dev/null || echo "n/a"; }
+# Base-image digests are only meaningful when resolved right after the build
+# that consumed them. With SKIP_BUILD=1 the local base tags may have moved on,
+# so carry the digest forward from the previous record if it describes the
+# same image ID, and otherwise say so rather than report a current tag.
+PREV="$OUT/generation.json"
+base_for() {
+    local key="$1" image="$2" tag="$3"
+    if [ "${SKIP_BUILD:-0}" != "1" ]; then base_digest "$tag"; return; fi
+    if [ -f "$PREV" ] && [ "$(jq -r --arg k "$key" '.images[$k].id // ""' "$PREV")" = "$(image_id "$image")" ]; then
+        jq -r --arg k "$key" '.images[$k].base_digest' "$PREV"; return
+    fi
+    echo "n/a (image reused with SKIP_BUILD=1; base provenance not recorded at build time)"
+}
+APP_BASE="$(base_for app "$APP_IMAGE" ubuntu:noble)"
+NGINX_BASE="$(base_for nginx "$NGINX_IMAGE" nginx:latest)"
+CERTBOT_BASE="$(base_for certbot "$CERTBOT_IMAGE" certbot/certbot:latest)"
 
 jq -n \
     --arg ts "$TS" --arg sha "$GIT_SHA" --arg short "$GIT_SHORT" --arg gitdate "$GIT_DATE" \
@@ -91,10 +107,10 @@ jq -n \
     --arg grypedb "$(grype db status -o json 2>/dev/null | jq -r '.built // .Built // "unknown"')" \
     --arg app_id "$(image_id "$APP_IMAGE")" --arg nginx_id "$(image_id "$NGINX_IMAGE")" \
     --arg certbot_id "$(image_id "$CERTBOT_IMAGE")" \
-    --arg ubuntu "$(base_digest ubuntu:noble)" --arg nginx_base "$(base_digest nginx:latest)" \
-    --arg certbot_base "$(base_digest certbot/certbot:latest)" \
+    --arg ubuntu "$APP_BASE" --arg nginx_base "$NGINX_BASE" --arg certbot_base "$CERTBOT_BASE" \
+    --argjson rebuilt "$([ "${SKIP_BUILD:-0}" != "1" ] && echo true || echo false)" \
     '{generated_at:$ts, repository:$repo, git_commit:$sha, git_commit_short:$short, git_commit_date:$gitdate,
-      supplier:$supplier,
+      supplier:$supplier, images_rebuilt:$rebuilt,
       tools:{syft:$syft, grype:$grype, grype_db_built:$grypedb},
       images:{app:{ref:"'"$APP_IMAGE"'", id:$app_id, base:"ubuntu:noble", base_digest:$ubuntu},
               nginx:{ref:"'"$NGINX_IMAGE"'", id:$nginx_id, base:"nginx:latest", base_digest:$nginx_base},

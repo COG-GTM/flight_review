@@ -53,7 +53,7 @@ Legend: **I** = implemented by this package; **S** = supported / evidence provid
 |---|---|---|---|
 | SA-4(5) | System, component, service configurations | S | SBOM documents the as-built configuration of each container |
 | SA-8 | Security and Privacy Engineering Principles | S | Supports "least common mechanism / minimization" review (see CM-7 gap) |
-| SA-9 | External System Services | S / G | Browser-runtime BOM lists 10 external services. **Gap:** 5 of 7 CDN-delivered scripts/styles are loaded without Subresource Integrity, so an external CDN compromise would execute in users' browsers (also SI-7) |
+| SA-9 | External System Services | S / G | Browser-runtime BOM lists 11 external services. **Gap:** 6 of 8 CDN-delivered scripts/styles are loaded without Subresource Integrity, so an external CDN compromise would execute in users' browsers (also SI-7) |
 | SA-10 | Developer Configuration Management | S / G | Commit, Dockerfiles and compose files are the CM record. **Gap:** CI workflow uses `actions/checkout@master` and `ad-m/github-push-action@master` (mutable refs) — pin to commit SHAs |
 | SA-11 | Developer Testing and Evaluation | S | CI runs pylint and a docker build; no SAST/DAST evidence is in this package (the companion Devin code scan covers SAST) |
 | SA-15(7) | Automated vulnerability analysis | S | grype step in `generate_sbom.sh`; recommend running in CI with `--fail-on high` once the baseline is adjudicated |

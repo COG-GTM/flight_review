@@ -4,9 +4,9 @@ Who/what/when for every file in this package, so a reviewer can reproduce it wit
 
 | Field | Value |
 |---|---|
-| Generated (UTC) | 2026-10-19T17:06:08Z |
+| Generated (UTC) | 2026-10-19T17:12:55Z |
 | Repository | https://github.com/COG-GTM/flight_review |
-| Commit | `ea5c16a3bb939f49e50296f953efac40c2456489` (2026-08-18T03:34:46+09:00) |
+| Commit | `aec3f49a6ef5e230129046b8a5ed4533c4fb6e06` (2026-10-19T17:07:07+00:00) |
 | Supplier recorded in BOMs | PX4 Autopilot Project (upstream); COG-GTM (fork maintainer) |
 | SBOM generator | syft 1.54.1 (CycloneDX 1.x JSON, SPDX 2.3 JSON) |
 | Vulnerability scanner | grype 0.120.1, DB built 2026-10-19T06:39:15Z |
@@ -24,21 +24,21 @@ Who/what/when for every file in this package, so a reviewer can reproduce it wit
 
 | File | SHA-256 |
 |---|---|
-| `cyclonedx/flight_review-app-image.cdx.json` | `d78ed2dd6b3eb2f7bca414d73e527e2d13f1da529ef1cd1e9c3ff06d150bc0ed` |
-| `cyclonedx/flight_review-browser-runtime.cdx.json` | `dccdd1b0b5995b31d578811b574f7b2488e643930c1c00fcca392ddc4c6f1177` |
-| `cyclonedx/flight_review-certbot-image.cdx.json` | `a6bab41eb50013ca99c4ae88e582f5d6b8b0efd9bcd840831f5be9ceeec7c680` |
-| `cyclonedx/flight_review-nginx-image.cdx.json` | `d9974f0c67670bf3c89506e12b699f84788042372635a3042e562fe0b9d41d4e` |
-| `cyclonedx/flight_review-source.cdx.json` | `40bf196cf1971f0c49ec0cb3927f3611f1d8236a60968807fd79020edcc9f2c5` |
-| `spdx/flight_review-app-image.spdx.json` | `56562b49a9cf4f64078dd3478057a3cad68fc0b6df4a9a77c7afeb5101a0bf60` |
-| `spdx/flight_review-certbot-image.spdx.json` | `05f37f624975dbf68ed3b6a96d4786b4db5f3fb0d679d64fe3faaebbf39aa477` |
-| `spdx/flight_review-nginx-image.spdx.json` | `439dc6bc06c215100fd04541730608b1aed6ae850377bb486301b5e94953776b` |
-| `spdx/flight_review-source.spdx.json` | `372c1ba85b38d6bca0674d002c2d206b1c3c0378053c59b5e6db8cfe1d3be97b` |
-| `vulnerability/flight_review-app-image.grype.json` | `0adfe87cb88d7ad27a68329d5a19c26c259c0f8a8a0e6bccb46959b6dbceb8a6` |
-| `vulnerability/flight_review-browser-runtime.grype.json` | `35aafb5dd280e28255f86fff99ae546f1a4295d91c8a4477dc04f2a73fb8ee0a` |
-| `vulnerability/flight_review-certbot-image.grype.json` | `38e3a72c31872660708c41b6ce409dbda70df074046afcb6a70a948c364ede10` |
-| `vulnerability/flight_review-nginx-image.grype.json` | `b22f8fee676c78fbf241fddb15194cd2926c02bd4de30769bd3d9b3d3260d185` |
-| `vulnerability/flight_review-source.grype.json` | `471a3ccc992e0ec9e4d061f1d9b4d16d3f4d17d8bcc1e8c62f3c28242b0052f8` |
-| `vulnerability/openvex-skeleton.json` | `9c5207cd19b6b604ee217f30d678c73804b134e61d75be09e66cacc5df9a29e2` |
+| `cyclonedx/flight_review-app-image.cdx.json` | `96537ddc023fb0e891ce657d7126b889300b28abf015ff668c622b023af52c37` |
+| `cyclonedx/flight_review-browser-runtime.cdx.json` | `ef7de7f337d744ca83dbc33b929a9431d70f43aadc00c320a322899837c18577` |
+| `cyclonedx/flight_review-certbot-image.cdx.json` | `2aeec94c5cdac9a33bdd6e8fc393c367f6b60f80ab866094007b1ff585ce094f` |
+| `cyclonedx/flight_review-nginx-image.cdx.json` | `42a35563f8c010f24304c7538f5ff37a68ad8b2798c8a87335fbebdc1b1589d5` |
+| `cyclonedx/flight_review-source.cdx.json` | `515a32a44b74819960ea0a1173cfdc3901407e8005f1a89460adf37946b4bdf8` |
+| `spdx/flight_review-app-image.spdx.json` | `ef6ec2d3223872613e1b71b946ae4b49c3496f7926d2b9950a6f3db897432b52` |
+| `spdx/flight_review-certbot-image.spdx.json` | `86bef0f1aa73077506d0b5e373573390a0e34d9578a903090cc0c0e23d306a65` |
+| `spdx/flight_review-nginx-image.spdx.json` | `4b0ca6e1730ccb5fce643494ec6a77aa44fda17b3c93a28888bd3cd431a584ad` |
+| `spdx/flight_review-source.spdx.json` | `6a24ddbf44a78089423e3d032837d8b380dd1418edc7173ee50c2e52a8a3b962` |
+| `vulnerability/flight_review-app-image.grype.json` | `1845ea599e01e492fe449ce2ee3e047b98e0388ee278618b25fd9559ac42c836` |
+| `vulnerability/flight_review-browser-runtime.grype.json` | `d15f14b42a064ef3990f19fec174e170f233d820b3163641682835cc8fd587b3` |
+| `vulnerability/flight_review-certbot-image.grype.json` | `5687ca145eafc775e0e9ef88d772ccda43bf039a9b1c052e07dc40cee4ad199d` |
+| `vulnerability/flight_review-nginx-image.grype.json` | `0a71d4ca7dafb47b0d2086fe22b5e9bef1bad5cd4c62a290b82f1c4a461489d9` |
+| `vulnerability/flight_review-source.grype.json` | `738ea2a4617813b03a90f1c5020d61cf2190e00764e295c97d3280cdf983d4a2` |
+| `vulnerability/openvex-skeleton.json` | `077a90a1fae1286963aa1acd507d2950c38cf6eb941e1c5fedf4625153415511` |
 
 ## Component / finding counts
 
@@ -48,4 +48,4 @@ Who/what/when for every file in this package, so a reviewer can reproduce it wit
 | `flight_review-app-image` | 265 | 207 |
 | `flight_review-nginx-image` | 154 | 337 |
 | `flight_review-certbot-image` | 1126 | 75 |
-| `flight_review-browser-runtime` | 18 | 3 |
+| `flight_review-browser-runtime` | 19 | 3 |

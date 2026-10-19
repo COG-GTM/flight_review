@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "flight_review-nginx-image",
-  "documentNamespace": "https://anchore.com/syft/image/flight_review-nginx-image-75d33b29-dd4d-4a8c-b7dc-3d1dbf13bc52",
+  "documentNamespace": "https://anchore.com/syft/image/flight_review-nginx-image-ab222c57-77f0-49c0-bc1b-dc4345a719d5",
   "creationInfo": {
     "licenseListVersion": "3.29",
     "creators": [
@@ -11,7 +11,7 @@
       "Tool: syft-1.54.1",
       "Organization: PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)"
     ],
-    "created": "2026-10-19T17:06:21Z"
+    "created": "2026-10-19T17:13:07Z"
   },
   "packages": [
     {
@@ -5503,7 +5503,7 @@
     {
       "name": "flight_review-nginx-image",
       "SPDXID": "SPDXRef-DocumentRoot-Image-flight-review-nginx-image",
-      "versionInfo": "ea5c16a",
+      "versionInfo": "aec3f49",
       "supplier": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": false,

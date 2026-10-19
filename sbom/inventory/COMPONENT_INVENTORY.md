@@ -8,7 +8,7 @@ Human-readable view of the CycloneDX SBOMs in `cyclonedx/`. The JSON files are a
 | `flight_review-app-image` | 265 | deb (121), npm (18), operating-system (1), pypi (125) |
 | `flight_review-nginx-image` | 154 | deb (152), maven (1), operating-system (1) |
 | `flight_review-certbot-image` | 1126 | apk (36), application (14), cargo (1038), generic (1), operating-system (1), pypi (36) |
-| `flight_review-browser-runtime` | 18 | npm (18) |
+| `flight_review-browser-runtime` | 19 | npm (19) |
 
 ## flight_review-source
 
@@ -1078,6 +1078,7 @@ Client-side JS/CSS fetched from CDNs or served from app/plot_app/static, plus ex
 | npm | jquery | 3.1.0 | MIT | OpenJS Foundation | `pkg:npm/jquery@3.1.0` |
 | npm | jquery | 3.7.0 | MIT | OpenJS Foundation | `pkg:npm/jquery@3.7.0` |
 | npm | leaflet | 1.3.4 | BSD-2-Clause | Vladimir Agafonkin | `pkg:npm/leaflet@1.3.4` |
+| npm | leaflet-omnivore | 0.3.1 | BSD-2-Clause | Mapbox | `pkg:npm/leaflet-omnivore@0.3.1` |
 | npm | lightbox2 | 2.7.1 | MIT | Lokesh Dhakar | `pkg:npm/lightbox2@2.7.1` |
 | npm | pace-js | 1.0.2 | MIT | HubSpot | `pkg:npm/pace-js@1.0.2` |
 | npm | popper.js | - | MIT | Federico Zivolo | `pkg:npm/popper.js` |

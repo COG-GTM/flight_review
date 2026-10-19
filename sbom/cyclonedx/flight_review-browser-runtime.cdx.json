@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:3a652aa4-0588-4afe-af9c-eafb8722063e",
+  "serialNumber": "urn:uuid:1a8a41af-7b09-4f41-ae9c-d232246e425d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-19T17:06:08Z",
+    "timestamp": "2026-10-19T17:12:55Z",
     "tools": {
       "components": [
         {
@@ -20,7 +20,7 @@
       "bom-ref": "flight_review-browser-runtime",
       "type": "application",
       "name": "flight_review-browser-runtime",
-      "version": "ea5c16a",
+      "version": "aec3f49",
       "supplier": {
         "name": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)"
       },
@@ -478,7 +478,48 @@
       ]
     },
     {
-      "bom-ref": "browser-11-cesium",
+      "bom-ref": "browser-11-leaflet-omnivore",
+      "type": "library",
+      "name": "leaflet-omnivore",
+      "supplier": {
+        "name": "Mapbox"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:npm/leaflet-omnivore@0.3.1",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "0.3.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-12-cesium",
       "type": "library",
       "name": "cesium",
       "supplier": {
@@ -519,7 +560,7 @@
       ]
     },
     {
-      "bom-ref": "browser-12-two.js",
+      "bom-ref": "browser-13-two.js",
       "type": "library",
       "name": "two.js",
       "supplier": {
@@ -560,7 +601,7 @@
       ]
     },
     {
-      "bom-ref": "browser-13-lightbox2",
+      "bom-ref": "browser-14-lightbox2",
       "type": "library",
       "name": "lightbox2",
       "supplier": {
@@ -601,7 +642,7 @@
       ]
     },
     {
-      "bom-ref": "browser-14-pace-js",
+      "bom-ref": "browser-15-pace-js",
       "type": "library",
       "name": "pace-js",
       "supplier": {
@@ -642,7 +683,7 @@
       ]
     },
     {
-      "bom-ref": "browser-15-bootstrap-filestyle",
+      "bom-ref": "browser-16-bootstrap-filestyle",
       "type": "library",
       "name": "bootstrap-filestyle",
       "supplier": {
@@ -683,7 +724,7 @@
       ]
     },
     {
-      "bom-ref": "browser-16-popper.js",
+      "bom-ref": "browser-17-popper.js",
       "type": "library",
       "name": "popper.js",
       "supplier": {
@@ -727,7 +768,7 @@
       ]
     },
     {
-      "bom-ref": "browser-17-animate.css",
+      "bom-ref": "browser-18-animate.css",
       "type": "library",
       "name": "animate.css",
       "supplier": {
@@ -906,6 +947,28 @@
     },
     {
       "bom-ref": "service-6",
+      "name": "Mapbox CDN",
+      "description": "leaflet-omnivore delivery (protocol-relative URL in header.html)",
+      "endpoints": [
+        "https://api.tiles.mapbox.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-7",
       "name": "Mapbox Tiles API",
       "description": "Map imagery (when mapbox_api_access_token configured)",
       "endpoints": [
@@ -927,7 +990,7 @@
       ]
     },
     {
-      "bom-ref": "service-7",
+      "bom-ref": "service-8",
       "name": "OpenStreetMap tile servers",
       "description": "Map imagery (default)",
       "endpoints": [
@@ -949,7 +1012,7 @@
       ]
     },
     {
-      "bom-ref": "service-8",
+      "bom-ref": "service-9",
       "name": "Cesium ion",
       "description": "3D terrain/imagery (when cesium_api_key configured)",
       "endpoints": [
@@ -971,7 +1034,7 @@
       ]
     },
     {
-      "bom-ref": "service-9",
+      "bom-ref": "service-10",
       "name": "Bing Maps (via Cesium)",
       "description": "Aerial imagery (when cesium_enable_bing_aerial)",
       "endpoints": [
@@ -1008,13 +1071,14 @@
         "browser-8-chosen-js",
         "browser-9-fortawesome-fontawesome-free",
         "browser-10-leaflet",
-        "browser-11-cesium",
-        "browser-12-two.js",
-        "browser-13-lightbox2",
-        "browser-14-pace-js",
-        "browser-15-bootstrap-filestyle",
-        "browser-16-popper.js",
-        "browser-17-animate.css",
+        "browser-11-leaflet-omnivore",
+        "browser-12-cesium",
+        "browser-13-two.js",
+        "browser-14-lightbox2",
+        "browser-15-pace-js",
+        "browser-16-bootstrap-filestyle",
+        "browser-17-popper.js",
+        "browser-18-animate.css",
         "service-0",
         "service-1",
         "service-2",
@@ -1024,7 +1088,8 @@
         "service-6",
         "service-7",
         "service-8",
-        "service-9"
+        "service-9",
+        "service-10"
       ]
     }
   ]

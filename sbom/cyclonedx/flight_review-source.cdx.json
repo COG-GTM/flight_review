@@ -1,11 +1,11 @@
 {
-  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
-  "specVersion": "1.7",
-  "serialNumber": "urn:uuid:1be54f33-b577-42c0-9b17-a51897872e9b",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:aadd1024-3bf4-42e7-bac6-29726dd9b48e",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-19T17:06:09Z",
+    "timestamp": "2026-10-19T17:12:55Z",
     "tools": {
       "components": [
         {
@@ -20,7 +20,7 @@
       "bom-ref": "80a44cf20b33536d",
       "type": "file",
       "name": "flight_review-source",
-      "version": "ea5c16a",
+      "version": "aec3f49",
       "supplier": {
         "name": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)"
       }

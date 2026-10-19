@@ -1,10 +1,11 @@
 {
-  "generated_at": "2026-10-19T17:06:08Z",
+  "generated_at": "2026-10-19T17:12:55Z",
   "repository": "COG-GTM/flight_review",
-  "git_commit": "ea5c16a3bb939f49e50296f953efac40c2456489",
-  "git_commit_short": "ea5c16a",
-  "git_commit_date": "2026-08-18T03:34:46+09:00",
+  "git_commit": "aec3f49a6ef5e230129046b8a5ed4533c4fb6e06",
+  "git_commit_short": "aec3f49",
+  "git_commit_date": "2026-10-19T17:07:07+00:00",
   "supplier": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)",
+  "images_rebuilt": false,
   "tools": {
     "syft": "1.54.1",
     "grype": "0.120.1",
