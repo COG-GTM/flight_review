@@ -1,0 +1,23 @@
+name: Helm chart validation
+
+on:
+  push:
+    branches: ['main']
+    paths: ['deploy/**', '.github/workflows/helm.yml']
+  pull_request:
+    paths: ['deploy/**', '.github/workflows/helm.yml']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - name: Install kubeconform and kube-linter
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | sudo tar xz -C /usr/local/bin kubeconform
+          curl -sSL https://github.com/stackrox/kube-linter/releases/download/v0.7.1/kube-linter-linux.tar.gz | sudo tar xz -C /usr/local/bin kube-linter
+      - name: Validate chart and manifests
+        run: ./deploy/scripts/validate.sh

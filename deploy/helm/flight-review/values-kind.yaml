@@ -1,0 +1,18 @@
+# Local verification overlay (kind + ingress-nginx). Not for production.
+image:
+  repository: flight-review-app
+  tag: hardened
+  pullPolicy: Never
+domain: flight-review.localtest.me
+config:
+  httpProtocol: http
+ingress:
+  className: nginx
+  tls:
+    enabled: false
+persistence:
+  size: 1Gi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi

@@ -1,0 +1,119 @@
+---
+# Source: flight-review/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flight-review
+  namespace: flight-review
+  labels:
+    helm.sh/chart: flight-review-0.1.0
+    app.kubernetes.io/name: flight-review
+    app.kubernetes.io/instance: flight-review
+    app.kubernetes.io/component: app
+    app.kubernetes.io/version: "2026.10"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: flight-review
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flight-review
+      app.kubernetes.io/instance: flight-review
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: flight-review
+        app.kubernetes.io/instance: flight-review
+        app.kubernetes.io/component: app
+      annotations:
+        checksum/config: 3373d5150f2f360a0370b3d8576f9280cb14dcef11a0f1e082d1c852c1e42824
+    spec:
+      serviceAccountName: flight-review
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: flight-review
+          image: "registry.example.mil/flight-review/app:2026.10"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: PORT
+              value: "5006"
+            - name: DOMAIN
+              value: "flight-review.example.mil"
+            - name: USE_PROXY
+              value: "True"
+            - name: HOME
+              value: /tmp
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: MPLCONFIGDIR
+              value: /tmp/matplotlib
+          ports:
+            - name: http
+              containerPort: 5006
+              protocol: TCP
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /opt/service/config_user.ini
+              subPath: config_user.ini
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: flight-review-data
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+        - name: config
+          secret:
+            secretName: flight-review-config
+            defaultMode: 0440

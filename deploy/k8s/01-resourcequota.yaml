@@ -1,0 +1,18 @@
+# Namespace-level ceilings so a runaway upload/parse cannot starve the node
+# (SC-6, SC-5). Sized for one app replica plus a helm test pod.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: flight-review-quota
+  namespace: flight-review
+spec:
+  hard:
+    pods: "4"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    persistentvolumeclaims: "2"
+    requests.storage: 100Gi
+    services.loadbalancers: "0"
+    services.nodeports: "0"

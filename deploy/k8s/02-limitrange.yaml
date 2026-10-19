@@ -1,0 +1,19 @@
+# Defaults for any container that omits requests/limits (defence in depth
+# against a values override that drops them).
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: flight-review-limits
+  namespace: flight-review
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "1"
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
