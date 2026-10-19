@@ -8,25 +8,20 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # pylint: disable=wrong-import-position
-from tornado_handlers.multipart_streamer import MultiPartStreamer, ParseError  # noqa: E402
+from tornado_handlers.multipart_streamer import (  # noqa: E402
+    MultiPartStreamer, ParseError, StreamedPart)
 
 
-class MemoryPart:
+class MemoryPart(StreamedPart):
     """Collects part data in memory."""
-    def __init__(self, headers):
-        self.headers = headers
+    def __init__(self, streamer, headers):
+        super().__init__(streamer, headers)
         self.data = b""
-        self._size = 0
 
     def feed(self, data):
         """append data"""
         self.data += data
-
-    def finalize(self):
-        """nothing to do"""
-
-    def release(self):
-        """nothing to do"""
+        self._size += len(data)
 
     def get_payload(self):
         """return data"""
@@ -34,15 +29,9 @@ class MemoryPart:
 
 
 class MemoryStreamer(MultiPartStreamer):
-    """Streamer that keeps parts in memory."""
+    """Streamer that keeps parts in memory; uses the production _begin_part."""
     def create_part(self, headers):
-        return MemoryPart(headers)
-
-    def _begin_part(self, headers):
-        if len(self.parts) >= self.MAX_PARTS:
-            raise ParseError("Too many multipart parts")
-        self.part = self.create_part(headers)
-        self.parts.append(self.part)
+        return MemoryPart(self, headers)
 
 
 BOUNDARY = b"----WebKitFormBoundaryabc123"
