@@ -1,0 +1,48 @@
+---
+# Source: flight-review/templates/networkpolicy-test.yaml
+# Egress for the `helm test` probe pod only: cluster DNS and the app Service
+# port. Without this the namespace default-deny blocks the test.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: flight-review-test
+  namespace: flight-review
+  labels:
+    helm.sh/chart: flight-review-0.1.0
+    app.kubernetes.io/name: flight-review
+    app.kubernetes.io/instance: flight-review
+    app.kubernetes.io/component: app
+    app.kubernetes.io/version: "2026.10"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: flight-review
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: flight-review
+      app.kubernetes.io/instance: flight-review
+      app.kubernetes.io/component: test
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: flight-review
+              app.kubernetes.io/instance: flight-review
+              app.kubernetes.io/component: app
+      ports:
+        - protocol: TCP
+          port: 5006

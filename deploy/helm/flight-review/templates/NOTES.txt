@@ -1,0 +1,15 @@
+Flight Review {{ .Chart.AppVersion }} ({{ .Release.Name }}) deployed to namespace {{ .Release.Namespace }}.
+
+URL:        {{ .Values.config.httpProtocol }}://{{ .Values.domain }}/
+Image:      {{ include "flight-review.image" . }}
+Data PVC:   {{ if .Values.persistence.enabled }}{{ default (printf "%s-data" (include "flight-review.fullname" .)) .Values.persistence.existingClaim }}{{ else }}DISABLED (emptyDir — uploads are lost on restart){{ end }}
+Config:     Secret/{{ include "flight-review.configSecretName" . }} (config_user.ini)
+NetPolicy:  {{ if .Values.networkPolicy.enabled }}default-deny with explicit ingress from the Ingress controller and egress to DNS/HTTPS{{ else }}DISABLED{{ end }}
+{{- if not .Values.image.digest }}
+
+NOTE: image is referenced by tag. For an accredited deployment set image.digest
+so the running container is bound to the SBOM/scan results (CM-2, SR-4(3)).
+{{- end }}
+
+Verify:   helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+Logs:     kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "flight-review.fullname" . }}

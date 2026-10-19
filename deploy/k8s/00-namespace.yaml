@@ -1,0 +1,12 @@
+# Namespace with Pod Security Admission pinned to the "restricted" profile
+# (enforce + audit + warn). Applied before the chart.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flight-review
+  labels:
+    app.kubernetes.io/part-of: flight-review
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

@@ -217,3 +217,9 @@ Contributions are welcome! Just open a pull request with detailed description
 why the changes are needed, or open an issue for bugs, feature requests, etc...
 
 Feel free to run `./run_pylint.sh` before PR to ensure CICD checks pass on your code. 
+
+## Kubernetes deployment (AO / ISSM package)
+
+A hardened Helm chart, namespace policy manifests, and the accompanying
+security memo / control mapping live in [`deploy/`](deploy/README.md); the
+matching SBOM / RMF package is in [`sbom/`](sbom/README.md).

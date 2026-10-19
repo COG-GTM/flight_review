@@ -1,0 +1,12 @@
+# Namespace-wide default deny. The chart's NetworkPolicy then opens exactly
+# the flows the app needs (SC-7, SC-7(5) deny-all / permit-by-exception).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: flight-review
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

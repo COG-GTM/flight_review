@@ -1,0 +1,24 @@
+apiVersion: v2
+name: flight-review
+description: |
+  PX4 Flight Review (Tornado + Bokeh ULog analysis web app) packaged for a
+  hardened Kubernetes deployment. Single application container, non-root,
+  read-only root filesystem, default-deny NetworkPolicy, TLS at the Ingress.
+  Companion to the SBOM / RMF package in sbom/.
+type: application
+version: 0.1.0
+appVersion: "2026.10"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/COG-GTM/flight_review
+sources:
+  - https://github.com/COG-GTM/flight_review
+keywords:
+  - px4
+  - ulog
+  - flight-review
+  - bokeh
+maintainers:
+  - name: COG-GTM
+annotations:
+  flightreview.cog-gtm.io/pod-security-standard: restricted
+  flightreview.cog-gtm.io/sbom: sbom/flight_review-system.cdx.json

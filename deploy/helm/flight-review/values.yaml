@@ -1,0 +1,192 @@
+# Default values for flight-review.
+# Every default below is the hardened posture; relax deliberately and record
+# the deviation in the SSP / POA&M (see deploy/docs/06_Container_Platform_Control_Mapping.md).
+
+image:
+  # Build from app/Dockerfile and push to the accredited registry, e.g.
+  #   docker build -t registry.example.mil/flight-review/app:2026.10 ./app
+  repository: registry.example.mil/flight-review/app
+  # Tag defaults to .Chart.AppVersion when empty.
+  tag: ""
+  # Preferred: pin the exact image by digest (sha256:...). When set, the tag is ignored.
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# SQLite is a single-writer database on one PVC; keep replicaCount at 1 and
+# the Recreate strategy unless the data layer is replaced.
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Public hostname users reach the app on. Used for the Bokeh websocket
+# origin allow-list, generated links/e-mails, and the Ingress host.
+domain: flight-review.example.mil
+
+config:
+  # http or https (what the Ingress terminates); https is the hardened default.
+  httpProtocol: https
+  airframesUrl: https://px4-travis.s3.amazonaws.com/Firmware/master/_general/airframes.xml
+  parametersUrl: https://px4-travis.s3.amazonaws.com/Firmware/master/_general/parameters.xml
+  eventsUrl: https://px4-travis.s3.amazonaws.com/Firmware/master/_general/all_events.json.xz
+  logCacheSize: 8
+  # seconds; 0 disables the per-log load timeout
+  logLoadTimeout: 120
+  # 0 keeps the 3D view on Sentinel-2 (no Bing/Microsoft call-out)
+  cesiumEnableBingAerial: 0
+  email:
+    smtpServer: ""
+    sender: ""
+    userName: ""
+  notifications:
+    publicFlightreport: ""
+    publicFlightreportBad: ""
+  # Raw INI text appended verbatim to config_user.ini (escape hatch).
+  extra: ""
+
+# config_user.ini can carry an SMTP password and third-party API keys, so the
+# chart renders it into a Secret. Either let the chart create it from the
+# values below, or point existingSecret at a Secret that already holds a
+# `config_user.ini` key (recommended in accredited environments).
+secrets:
+  # Mounted via subPath, so a Secret edit alone does NOT reach a running pod.
+  # Bump existingSecretVersion (any string) after rotating the Secret so the
+  # next `helm upgrade` rolls the pod; or set lookupExistingSecret: true to
+  # hash the live Secret instead (requires the Helm deployer to be able to
+  # read Secrets in the namespace — opt-in for that reason).
+  existingSecret: ""
+  existingSecretVersion: ""
+  lookupExistingSecret: false
+  smtpPassword: ""
+  cesiumApiKey: ""
+  mapboxApiAccessToken: ""
+  # PEM for ULge encrypted-log support; mounted read-only at
+  # /opt/service/private_key/private_key.pem when non-empty.
+  ulgePrivateKey: ""
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: ""
+  # Uploads are streamed multipart bodies; nginx-ingress needs the body-size
+  # override. Add the annotations your controller uses for websockets/TLS.
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    # Name of the TLS Secret (e.g. issued by cert-manager or provisioned by the platform team).
+    secretName: flight-review-tls
+
+networkPolicy:
+  enabled: true
+  # Pod/namespace selectors allowed to reach the app on its port. Default
+  # matches the ingress-nginx namespace; adjust for your platform's controller.
+  # Also admit the `helm test` probe pod (label component=test, this release only).
+  allowHelmTest: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  egress:
+    dns: true
+    # HTTPS to the PX4 metadata URLs (airframes/parameters/events). Set the
+    # exact CIDRs when the platform can resolve them; private ranges are
+    # excluded by default so the app cannot pivot inside the cluster/VPC.
+    https:
+      enabled: true
+      cidrs:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+    smtp:
+      enabled: false
+      cidr: ""
+      port: 465
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+# Pod Security Standards "restricted" profile.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+# Size of the tmpfs the app may scratch in (Bokeh/matplotlib caches).
+tmpVolume:
+  sizeLimit: 256Mi
+
+probes:
+  startup:
+    tcpSocket: true
+    periodSeconds: 5
+    failureThreshold: 36
+  liveness:
+    path: /
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+podDisruptionBudget:
+  # Only meaningful once replicaCount > 1 (needs a shared-storage data layer).
+  enabled: false
+  minAvailable: 1
+
+podAnnotations: {}
+podLabels: {}
+priorityClassName: ""
+terminationGracePeriodSeconds: 30
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+extraEnv: []

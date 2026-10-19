@@ -1,0 +1,63 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "flight-review.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "flight-review.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "flight-review.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+        {{- if .Values.networkPolicy.allowHelmTest }}
+        # `helm test` probe pod, same namespace and release only
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "flight-review.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: test
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 5006
+  egress:
+    {{- if .Values.networkPolicy.egress.dns }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
+    {{- if .Values.networkPolicy.egress.https.enabled }}
+    - to:
+        {{- range .Values.networkPolicy.egress.https.cidrs }}
+        - ipBlock:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+    {{- if .Values.networkPolicy.egress.smtp.enabled }}
+    - to:
+        - ipBlock:
+            cidr: {{ required "networkPolicy.egress.smtp.cidr is required when SMTP egress is enabled" .Values.networkPolicy.egress.smtp.cidr }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.egress.smtp.port }}
+    {{- end }}
+{{- end }}
