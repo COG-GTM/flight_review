@@ -142,7 +142,7 @@ def get_info_table_html(ulog, px4_ulog, db_data, vehicle_data, vtol_states):
         indices = np.nonzero(gps_data.data['time_utc_usec'])
         if len(indices[0]) > 0:
             # we use the timestamp from the log and then convert it with JS to
-            # display with local timezone.
+            # display with local timezone (labelled) and UTC.
             # In addition we add a tooltip to show the timezone from the log
             logging_start_time = int(gps_data.data['time_utc_usec'][indices[0][0]] / 1000000)
 
@@ -150,7 +150,7 @@ def get_info_table_html(ulog, px4_ulog, db_data, vehicle_data, vtol_states):
             utctimestamp = datetime.datetime.utcfromtimestamp(
                 logging_start_time+utc_offset_min*60).replace(tzinfo=datetime.timezone.utc)
 
-            tooltip = '''This is your local timezone.
+            tooltip = '''Shown in your local timezone, with UTC in parentheses.
 <br />
 Log timezone: {}
 <br />
