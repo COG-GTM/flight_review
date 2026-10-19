@@ -40,15 +40,36 @@ function init_error_labels(error_ids) {
 
 $(function() { //on startup
 
-	// Show Logging start: convert timestamp to local time
+	// Show Logging start: local time with its timezone, plus UTC so the
+	// value is unambiguous for viewers in different timezones
 	var logging_span = $('#logging-start-element');
 
+	var pad2 = function(n) { return ("0" + n).slice(-2); };
 	var d = new Date(0);
 	d.setUTCSeconds(logging_span.text());
-	var date_str = ("0" + d.getDate()).slice(-2) + "-" +
-		("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " +
-		("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
-	logging_span.text(date_str);
+	var local_str = pad2(d.getDate()) + "-" + pad2(d.getMonth()+1) + "-" +
+		d.getFullYear() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+	var utc_str = pad2(d.getUTCDate()) + "-" + pad2(d.getUTCMonth()+1) + "-" +
+		d.getUTCFullYear() + " " + pad2(d.getUTCHours()) + ":" + pad2(d.getUTCMinutes());
+
+	var tz_name = "";
+	try {
+		var tz_parts = new Intl.DateTimeFormat(undefined, {timeZoneName: "short"}).formatToParts(d);
+		for (var i = 0; i < tz_parts.length; i++) {
+			if (tz_parts[i].type === "timeZoneName") {
+				tz_name = tz_parts[i].value;
+			}
+		}
+	} catch (e) {
+		// Intl not available: fall back to the numeric offset below
+	}
+	if (tz_name === "") {
+		var offset_min = -d.getTimezoneOffset();
+		tz_name = "UTC" + (offset_min < 0 ? "-" : "+") +
+			pad2(Math.floor(Math.abs(offset_min) / 60)) + ":" + pad2(Math.abs(offset_min) % 60);
+	}
+
+	logging_span.text(local_str + " " + tz_name + " (" + utc_str + " UTC)");
 	logging_span.show();
 
 
