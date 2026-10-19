@@ -11,7 +11,8 @@ import tornado.web
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from config import get_db_connection
 from db_entry import DBData
-from helper import get_airframe_data, parse_error_label_ids
+from helper import get_airframe_data
+from config_tables import parse_error_label_ids
 
 
 #pylint: disable=relative-beyond-top-level

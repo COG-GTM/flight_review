@@ -23,6 +23,10 @@ import tempfile
 import urllib.request
 import xml.etree.ElementTree
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             '..', 'app', 'plot_app'))
+from config_tables import parse_error_label_ids  # pylint: disable=wrong-import-position
+
 AIRFRAMES_URL = 'https://px4-travis.s3.amazonaws.com/Firmware/master/_general/airframes.xml'
 
 
@@ -81,9 +85,7 @@ def generate(db_path, airframes, download_url_prefix=''):
             continue
 
         # Parse fields exactly as the app does
-        error_labels = sorted(
-            [int(x) for x in row[6].split(',') if len(x) > 0]
-        ) if row[6] else []
+        error_labels = parse_error_label_ids(row[6])
 
         flight_modes = {int(x) for x in gen[9].split(',') if len(x) > 0}
         flight_mode_durations = [

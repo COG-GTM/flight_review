@@ -66,6 +66,8 @@ def validate_log_id(log_id):
     exists) """
     if _check_log_id_is_filename():
         return True
+    if not isinstance(log_id, str):
+        return False
     # we are a bit less restrictive than the actual format
     if re.match(r'^[0-9a-zA-Z_-]+$', log_id):
         return True
@@ -592,29 +594,6 @@ def validate_error_ids(err_ids):
             return False
 
     return True
-
-def parse_error_label_ids(error_labels_str):
-    """
-    parse the comma-separated ErrorLabels DB column into a sorted list of
-    known error label ids, skipping any entry that is not a valid id
-    """
-
-    if not error_labels_str:
-        return []
-
-    error_ids = set()
-    for entry in error_labels_str.split(','):
-        entry = entry.strip()
-        if not entry:
-            continue
-        try:
-            error_id = int(entry)
-        except ValueError:
-            continue
-        if error_id in error_labels_table:
-            error_ids.add(error_id)
-
-    return sorted(error_ids)
 
 def decrypt_ulge_payload(payload: bytes, private_key_path: str) -> bytes:
     """Decrypt an uploaded .ulge file payload and return decrypted .ulg bytes."""
