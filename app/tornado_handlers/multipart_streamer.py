@@ -221,7 +221,15 @@ class MultiPartStreamer:
     SEP = b"\r\n"  # line separator in multipart/form-data
     L_SEP = len(SEP)
     PAT_HEADER_VALUE = re.compile(r"""([^:]+):\s+([^\s;]+)(.*)""")
-    PAT_HEADER_PARAMS = re.compile(r""";\s*([^=]+)=\"(.*?)\"(.*)""")
+    # Matches one ``; name="value"`` parameter. No trailing ``(.*)`` group: the
+    # parser advances by match position so each header is scanned only once.
+    PAT_HEADER_PARAMS = re.compile(r';\s*([^=;\s]+)="([^"]*)"')
+
+    # Limits on the part headers. Headers are parsed synchronously on the
+    # IOLoop, so a client must not be able to make this arbitrarily expensive.
+    MAX_HEADER_LINE_LENGTH = 8 * 1024
+    MAX_HEADERS_PER_PART = 16
+    MAX_PARTS = 100
 
     # Encoding for the header values. Only header name and parameters
     # will be decoded. Streamed data will remain binary.
@@ -269,18 +277,22 @@ class MultiPartStreamer:
         :return: A dict that contains the ``name``, ``value`` and ``params`` for the header.
             If the header is a simple value, then it may only return a dict with a ``value``.
         """
+        if len(header) > self.MAX_HEADER_LINE_LENGTH:
+            raise ParseError("Multipart header line too long")
         header = header.decode(self.header_encoding)
         res = self.PAT_HEADER_VALUE.match(header)
         if res:
             name, value, tail = res.groups()
             params = {}
             hdr = {"name": name, "value": value, "params": params}
+            pos = 0
             while True:
-                res = self.PAT_HEADER_PARAMS.match(tail)
+                res = self.PAT_HEADER_PARAMS.match(tail, pos)
                 if not res:
                     break
-                hdr_name, hdr_value, tail = res.groups()
+                hdr_name, hdr_value = res.groups()
                 params[hdr_name] = hdr_value
+                pos = res.end()
             return hdr
         return {"value": header}
 
@@ -288,6 +300,8 @@ class MultiPartStreamer:
         """Internal method called when a new part is started in the stream.
 
         :param headers: A dict of headers as returned by parse_header."""
+        if len(self.parts) >= self.MAX_PARTS:
+            raise ParseError("Too many multipart parts")
         self.part = self.create_part(headers)
         assert isinstance(self.part, StreamedPart)
         self.parts.append(self.part)
@@ -349,20 +363,30 @@ class MultiPartStreamer:
                 else:
                     return
             if not self.in_data:
+                # Scan header lines by position; self.buf is sliced once per
+                # chunk instead of once per line.
+                pos = 0
                 while True:
-                    header, self.buf = self._get_raw_header(self.buf)
+                    idx = self.buf.find(self.SEP, pos)
+                    if idx < 0:
+                        # Not enough data yet for a complete header line
+                        if len(self.buf) - pos > self.MAX_HEADER_LINE_LENGTH:
+                            raise ParseError("Multipart header line too long")
+                        self.buf = self.buf[pos:]
+                        return
+                    header = self.buf[pos:idx]
+                    pos = idx + self.L_SEP
                     if header == b"":
                         assert self.delimiter
+                        self.buf = self.buf[pos:]
                         self.in_data = True
                         self._begin_part(self.headers)
                         self.headers = []
                         break
 
-                    if header:
-                        self.headers.append(self._parse_header(header))
-                    else:
-                        # Header is None, not enough data yet
-                        return
+                    if len(self.headers) >= self.MAX_HEADERS_PER_PART:
+                        raise ParseError("Too many multipart part headers")
+                    self.headers.append(self._parse_header(header))
 
     def data_complete(self):
         """Call this after the last receive() call, e.g. when all data arrived for the form.
