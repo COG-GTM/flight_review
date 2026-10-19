@@ -776,7 +776,6 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                                  y_axis_label='[deg/s]', title=f'Raw Gyro (FIFO, IMU{instance})',
                                  plot_height='small', changed_params=changed_params,
                                  x_range=x_range, topic_instance=instance)
-            data_plot.add_graph(['x', 'y', 'z'], colors3, ['X', 'Y', 'Z'])
             data_plot.add_graph([
                 lambda data: ('x', np.rad2deg(data['x'])),
                 lambda data: ('y', np.rad2deg(data['y'])),
