@@ -579,14 +579,42 @@ def clear_ulog_cache():
 
 def validate_error_ids(err_ids):
     """
-    validate the err_ids
+    validate the err_ids: must be a list of plain integers (not bool/float,
+    which compare equal to the integer keys) that exist in error_labels_table
     """
 
+    if not isinstance(err_ids, list):
+        return False
+
     for err_id in err_ids:
-        if err_id not in error_labels_table:
+        # pylint: disable=unidiomatic-typecheck
+        if type(err_id) is not int or err_id not in error_labels_table:
             return False
 
     return True
+
+def parse_error_label_ids(error_labels_str):
+    """
+    parse the comma-separated ErrorLabels DB column into a sorted list of
+    known error label ids, skipping any entry that is not a valid id
+    """
+
+    if not error_labels_str:
+        return []
+
+    error_ids = set()
+    for entry in error_labels_str.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            error_id = int(entry)
+        except ValueError:
+            continue
+        if error_id in error_labels_table:
+            error_ids.add(error_id)
+
+    return sorted(error_ids)
 
 def decrypt_ulge_payload(payload: bytes, private_key_path: str) -> bytes:
     """Decrypt an uploaded .ulge file payload and return decrypted .ulg bytes."""

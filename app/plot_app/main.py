@@ -141,9 +141,7 @@ else:
                 db_data.wind_speed = db_tuple[3]
                 db_data.rating = db_tuple[4]
                 db_data.video_url = db_tuple[5]
-                db_data.error_labels = sorted(
-                    [int(x) for x in db_tuple[6].split(',') if len(x) > 0]) \
-                    if db_tuple[6] else []
+                db_data.error_labels = parse_error_label_ids(db_tuple[6])
 
             # vehicle data
             if 'sys_uuid' in ulog.msg_info_dict:
