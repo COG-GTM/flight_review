@@ -5,7 +5,7 @@ from html import escape
 
 from bokeh.layouts import column
 from bokeh.models import Range1d
-from bokeh.models.widgets import Button
+from bokeh.models.widgets import Button, Div
 from bokeh.io import curdoc
 
 from config import *
@@ -202,9 +202,20 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
     if data_plot.finalize() is not None: plots.append(data_plot)
 
     # VTOL tailistter orientation conversion, if relevant
+    tailsitter_attitude = tailsitter_rates = tailsitter_rates_setpoint = \
+        {'roll': None, 'pitch': None, 'yaw': None}
     if is_vtol_tailsitter:
-        [tailsitter_attitude, tailsitter_rates, tailsitter_rates_setpoint] = tailsitter_orientation(
-            ulog, vtol_states)
+        [tailsitter_attitude, tailsitter_rates, tailsitter_rates_setpoint,
+         tailsitter_errors] = tailsitter_orientation(ulog, vtol_states)
+        if len(tailsitter_errors) > 0:
+            # tell the user instead of silently dropping the corrected data
+            warning_html = '<div class="alert alert-warning">' \
+                '<strong>Tailsitter correction failed</strong> for: ' + \
+                ', '.join(escape(err) for err in tailsitter_errors) + \
+                '.<br />The affected Angle / Angular Rate plots show the ' \
+                'uncorrected (multicopter frame) values instead.</div>'
+            plots.append(column(Div(text=warning_html, width=int(plot_width*0.99)),
+                                width=int(plot_width*0.99)))
 
     # Roll/Pitch/Yaw angle & angular rate
     for index, axis in enumerate(['roll', 'pitch', 'yaw']):
@@ -214,11 +225,10 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                              y_axis_label='[deg]', title=axis_name+' Angle',
                              plot_height='small', changed_params=changed_params,
                              x_range=x_range)
-        if is_vtol_tailsitter:
-            if tailsitter_attitude[axis] is not None:
-                data_plot.add_graph([lambda data: (axis+'_q',
-                                                   np.rad2deg(tailsitter_attitude[axis]))],
-                                    colors3[0:1], [axis_name+' Estimated'], mark_nan=True)
+        if is_vtol_tailsitter and tailsitter_attitude[axis] is not None:
+            data_plot.add_graph([lambda data: (axis+'_q',
+                                               np.rad2deg(tailsitter_attitude[axis]))],
+                                colors3[0:1], [axis_name+' Estimated'], mark_nan=True)
         else:
             data_plot.add_graph([lambda data: (axis, np.rad2deg(data[axis]))],
                                 colors3[0:1], [axis_name+' Estimated'], mark_nan=True)
@@ -244,21 +254,21 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                              y_axis_label='[deg/s]', title=axis_name+' Angular Rate',
                              plot_height='small', changed_params=changed_params,
                              x_range=x_range)
-        if is_vtol_tailsitter:
-            if tailsitter_rates[axis] is not None:
-                data_plot.add_graph([lambda data: (axis+'_q',
-                                np.rad2deg(tailsitter_rates[axis]))],
+        if is_vtol_tailsitter and tailsitter_rates[axis] is not None:
+            data_plot.add_graph([lambda data: (axis+'_q',
+                                               np.rad2deg(tailsitter_rates[axis]))],
                                 colors3[0:1], [axis_name+' Rate Estimated'], mark_nan=True)
-                data_plot.change_dataset('vehicle_rates_setpoint')
-                data_plot.add_graph([lambda data: (axis, np.rad2deg(
-                                tailsitter_rates_setpoint[axis]))],
-                                colors3[1:2], [axis_name+' Rate Setpoint'],
-                                mark_nan=True, use_step_lines=True)
         else:
             data_plot.add_graph([lambda data: (axis+'speed',
                                                np.rad2deg(data[rate_field_names[index]]))],
                                 colors3[0:1], [axis_name+' Rate Estimated'], mark_nan=True)
-            data_plot.change_dataset('vehicle_rates_setpoint')
+        data_plot.change_dataset('vehicle_rates_setpoint')
+        if is_vtol_tailsitter and tailsitter_rates_setpoint[axis] is not None:
+            data_plot.add_graph([lambda data: (axis, np.rad2deg(
+                                tailsitter_rates_setpoint[axis]))],
+                                colors3[1:2], [axis_name+' Rate Setpoint'],
+                                mark_nan=True, use_step_lines=True)
+        else:
             data_plot.add_graph([lambda data: (axis, np.rad2deg(data[axis]))],
                                 colors3[1:2], [axis_name+' Rate Setpoint'],
                                 mark_nan=True, use_step_lines=True)
