@@ -17,7 +17,9 @@ from bokeh.models import (
 from bokeh.plotting import figure
 
 from config import debug_verbose_output
-from downsampling import DynamicDownsample
+from downsampling import (
+    DynamicDownsample, DownsampleIndicator, peak_downsample, peak_downsample_columns
+)
 from helper import (
     map_projection, WGS84_to_mercator, flight_modes_table, vtol_modes_table, get_lat_lon_alt_deg
 )
@@ -419,6 +421,7 @@ class DataPlot:
         self._had_error = False
         self._previous_success = False
         self._param_change_label = None
+        self._downsample_indicator = None
 
         self._data = data
         self._config = config
@@ -558,7 +561,8 @@ class DataPlot:
                 # we directly pass the data_set, downsample and then create the
                 # ColumnDataSource object, which is much faster than
                 # first creating ColumnDataSource, and then downsample
-                downsample = DynamicDownsample(p, data_set, 'timestamp')
+                downsample = DynamicDownsample(p, data_set, 'timestamp',
+                                               self._get_downsample_indicator())
                 data_source = downsample.data_source
             else:
                 data_source = ColumnDataSource(data=data_set)
@@ -599,6 +603,13 @@ class DataPlot:
             if debug_verbose_output():
                 print(type(error), "("+self._data_name+"):", error)
             self._had_error = True
+
+
+    def _get_downsample_indicator(self, method='min/max envelope', dynamic=True):
+        """ get (or create) the on-plot label disclosing the downsampling """
+        if self._downsample_indicator is None:
+            self._downsample_indicator = DownsampleIndicator(self._p, method, dynamic)
+        return self._downsample_indicator
 
 
     def _expand_field_names(self, field_names, data_set):
@@ -873,17 +884,18 @@ class DataPlotSpec(DataPlot):
                 inner_image[inner_image == -np.inf] = finite_min
             image = [inner_image]
 
-            title = self.title
-            for legend in legends:
-                title += " " + legend
-            title += " [dB]"
+            # disclose the analysis parameters in the title
+            self._p.title.text = self.title + " [dB] ({:} window, {:} samples, {:} overlap)".format( # pylint: disable=no-member
+                window, window_length, noverlap)
 
-            # assume maximal data points per pixel at full resolution
+            # assume maximal data points per pixel at full resolution; reduce
+            # the time axis by keeping the per-frequency maximum of each block
             max_num_data_points = 2.0*self._config['plot_width']
-            if len(time) > max_num_data_points:
-                step_size = int(len(time) / max_num_data_points)
-                time = time[::step_size]
-                image[0] = image[0][:, ::step_size]
+            time, image[0], step_size = peak_downsample_columns(time, image[0],
+                                                                max_num_data_points)
+            self._get_downsample_indicator(
+                'max of {:} spectrogram columns'.format(step_size),
+                dynamic=False).update(id(self), step_size)
 
             color_mapper = LinearColorMapper(palette="Viridis256", low=np.amin(image), high=np.amax(image))
 
@@ -979,12 +991,13 @@ class DataPlotFFT(DataPlot):
             for fft_values, mean_fft_value, legend, color in plot_data:
                 fft_plot_values = fft_values[:len(freqs)//2]
                 freqs_plot = freqs[:len(freqs)//2]
-                # downsample if necessary
+                # reduce if necessary, keeping the peak of each block of bins
                 max_num_data_points = 3.0*self._config['plot_width']
-                if len(fft_plot_values) > max_num_data_points:
-                    step_size = int(len(fft_plot_values) / max_num_data_points)
-                    fft_plot_values = fft_plot_values[::step_size]
-                    freqs_plot = freqs_plot[::step_size]
+                freqs_plot, fft_plot_values, step_size = peak_downsample(
+                    freqs_plot, fft_plot_values, max_num_data_points)
+                self._get_downsample_indicator(
+                    'peak of {:} FFT bins'.format(step_size),
+                    dynamic=False).update(id(self), step_size)
                 self._p.line(freqs_plot, fft_plot_values, # pylint: disable=too-many-function-args
                              line_color=color, line_width=2, legend_label=legend, alpha=0.8)
             # plot the mean lines above the fft graphs
