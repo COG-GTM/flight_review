@@ -218,6 +218,8 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                                 width=int(plot_width*0.99)))
 
     # Roll/Pitch/Yaw angle & angular rate
+    # label raw-frame fallbacks so corrected and uncorrected series are distinguishable
+    uncorrected_suffix = ' (uncorrected)' if is_vtol_tailsitter else ''
     for index, axis in enumerate(['roll', 'pitch', 'yaw']):
         # angle
         axis_name = axis.capitalize()
@@ -231,7 +233,8 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                                 colors3[0:1], [axis_name+' Estimated'], mark_nan=True)
         else:
             data_plot.add_graph([lambda data: (axis, np.rad2deg(data[axis]))],
-                                colors3[0:1], [axis_name+' Estimated'], mark_nan=True)
+                                colors3[0:1], [axis_name+' Estimated'+uncorrected_suffix],
+                                mark_nan=True)
 
         data_plot.change_dataset('vehicle_attitude_setpoint')
         data_plot.add_graph([lambda data: (axis+'_d', np.rad2deg(data[axis+'_d']))],
@@ -261,7 +264,8 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
         else:
             data_plot.add_graph([lambda data: (axis+'speed',
                                                np.rad2deg(data[rate_field_names[index]]))],
-                                colors3[0:1], [axis_name+' Rate Estimated'], mark_nan=True)
+                                colors3[0:1], [axis_name+' Rate Estimated'+uncorrected_suffix],
+                                mark_nan=True)
         data_plot.change_dataset('vehicle_rates_setpoint')
         if is_vtol_tailsitter and tailsitter_rates_setpoint[axis] is not None:
             data_plot.add_graph([lambda data: (axis, np.rad2deg(
@@ -270,7 +274,7 @@ def generate_plots(ulog, px4_ulog, db_data, vehicle_data, link_to_3d_page,
                                 mark_nan=True, use_step_lines=True)
         else:
             data_plot.add_graph([lambda data: (axis, np.rad2deg(data[axis]))],
-                                colors3[1:2], [axis_name+' Rate Setpoint'],
+                                colors3[1:2], [axis_name+' Rate Setpoint'+uncorrected_suffix],
                                 mark_nan=True, use_step_lines=True)
         axis_letter = axis[0].upper()
         rate_int_limit = '(*100)'
