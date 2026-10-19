@@ -50,6 +50,10 @@ config:
 # values below, or point existingSecret at a Secret that already holds a
 # `config_user.ini` key (recommended in accredited environments).
 secrets:
+  # When set, the chart hashes the external Secret at install/upgrade time
+  # (Helm `lookup`) into the pod's checksum/config annotation so a rotated
+  # Secret rolls the pod on the next `helm upgrade`. Mounted via subPath, so
+  # a Secret edit alone does NOT reach a running pod — upgrade or restart.
   existingSecret: ""
   smtpPassword: ""
   cesiumApiKey: ""
@@ -92,6 +96,8 @@ networkPolicy:
   enabled: true
   # Pod/namespace selectors allowed to reach the app on its port. Default
   # matches the ingress-nginx namespace; adjust for your platform's controller.
+  # Also admit the `helm test` probe pod (label component=test, this release only).
+  allowHelmTest: true
   ingressFrom:
     - namespaceSelector:
         matchLabels:

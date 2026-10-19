@@ -32,10 +32,18 @@ spec:
       command: ["python3", "-c"]
       args:
         - |
-          import sys, urllib.request
-          url = "http://{{ include "flight-review.fullname" . }}:{{ .Values.service.port }}/"
-          body = urllib.request.urlopen(url, timeout=15).read().decode()
-          sys.exit(0 if "Flight Review" in body else 1)
+          import sys, time, urllib.request
+          url = "http://{{ include "flight-review.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/"
+          last = None
+          for attempt in range(12):
+              try:
+                  body = urllib.request.urlopen(url, timeout=15).read().decode()
+                  sys.exit(0 if "Flight Review" in body else 1)
+              except Exception as exc:  # DNS/endpoint propagation right after install
+                  last = exc
+                  time.sleep(5)
+          print("probe failed:", last)
+          sys.exit(1)
       resources:
         requests: {cpu: 50m, memory: 64Mi}
         limits: {cpu: 200m, memory: 128Mi}

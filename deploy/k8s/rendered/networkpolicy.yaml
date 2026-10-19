@@ -27,6 +27,12 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+        # `helm test` probe pod, same namespace and release only
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: flight-review
+              app.kubernetes.io/instance: flight-review
+              app.kubernetes.io/component: test
       ports:
         - protocol: TCP
           port: 5006

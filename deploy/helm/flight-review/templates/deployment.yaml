@@ -22,6 +22,11 @@ spec:
       annotations:
         {{- if not .Values.secrets.existingSecret }}
         checksum/config: {{ include (print $.Template.BasePath "/secret-config.yaml") . | sha256sum }}
+        {{- else }}
+        {{- /* subPath mounts never refresh; hash the external Secret (when the API is reachable) so `helm upgrade` rolls the pod after a rotation. */}}
+        {{- with (lookup "v1" "Secret" .Release.Namespace .Values.secrets.existingSecret) }}
+        checksum/config: {{ .data | toJson | sha256sum }}
+        {{- end }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}

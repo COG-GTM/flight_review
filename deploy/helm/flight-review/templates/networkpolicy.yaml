@@ -16,6 +16,14 @@ spec:
   ingress:
     - from:
         {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+        {{- if .Values.networkPolicy.allowHelmTest }}
+        # `helm test` probe pod, same namespace and release only
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "flight-review.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: test
+        {{- end }}
       ports:
         - protocol: TCP
           port: 5006
