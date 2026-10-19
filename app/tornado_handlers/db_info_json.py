@@ -12,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../pl
 from config import get_db_connection
 from db_entry import DBData
 from helper import get_airframe_data
+from config_tables import parse_error_label_ids
 
 
 #pylint: disable=relative-beyond-top-level
@@ -51,8 +52,7 @@ class DBInfoHandler(tornado.web.RequestHandler):
             db_data.wind_speed = db_tuple[3]
             db_data.rating = db_tuple[4]
             db_data.video_url = db_tuple[5]
-            db_data.error_labels = sorted([int(x) for x in db_tuple[6].split(',') if len(x) > 0]) \
-                if db_tuple[6] else []
+            db_data.error_labels = parse_error_label_ids(db_tuple[6])
             db_data.source = db_tuple[7]
             db_data.feedback = db_tuple[8]
             db_data.type = db_tuple[9]

@@ -55,3 +55,25 @@ error_labels_table = {
        # Note: when adding new labels, always increase the id, never re-use a lower value
     }
 
+def parse_error_label_ids(error_labels_str):
+    """
+    parse the comma-separated ErrorLabels DB column into a sorted list of
+    known error label ids, skipping any entry that is not a valid id
+    """
+
+    if not error_labels_str:
+        return []
+
+    error_ids = set()
+    for entry in error_labels_str.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            error_id = int(entry)
+        except ValueError:
+            continue
+        if error_id in error_labels_table:
+            error_ids.add(error_id)
+
+    return sorted(error_ids)

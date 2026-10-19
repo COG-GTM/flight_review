@@ -66,6 +66,8 @@ def validate_log_id(log_id):
     exists) """
     if _check_log_id_is_filename():
         return True
+    if not isinstance(log_id, str):
+        return False
     # we are a bit less restrictive than the actual format
     if re.match(r'^[0-9a-zA-Z_-]+$', log_id):
         return True
@@ -579,11 +581,16 @@ def clear_ulog_cache():
 
 def validate_error_ids(err_ids):
     """
-    validate the err_ids
+    validate the err_ids: must be a list of plain integers (not bool/float,
+    which compare equal to the integer keys) that exist in error_labels_table
     """
 
+    if not isinstance(err_ids, list):
+        return False
+
     for err_id in err_ids:
-        if err_id not in error_labels_table:
+        # pylint: disable=unidiomatic-typecheck
+        if type(err_id) is not int or err_id not in error_labels_table:
             return False
 
     return True

@@ -19,21 +19,20 @@ class UpdateErrorLabelHandler(tornado.web.RequestHandler):
     def post(self, *args, **kwargs):
         """ POST request """
 
-        data = tornado.escape.json_decode(self.request.body)
+        try:
+            data = tornado.escape.json_decode(self.request.body)
+            log_id = data['log']
+            error_ids = data['labels']
+        except (ValueError, TypeError, KeyError) as error:
+            raise tornado.web.HTTPError(400, 'Invalid Parameter') from error
 
-        log_id = data['log']
         if not validate_log_id(log_id):
             raise tornado.web.HTTPError(400, 'Invalid Parameter')
 
-        error_ids = data['labels']
         if not validate_error_ids(error_ids):
             raise tornado.web.HTTPError(400, 'Invalid Parameter')
 
-        error_id_str = ""
-        for error_ix, error_id in enumerate(error_ids):
-            error_id_str += str(error_id)
-            if error_ix < len(error_ids)-1:
-                error_id_str += ","
+        error_id_str = ",".join(str(int(error_id)) for error_id in error_ids)
 
         con = get_db_connection()
         cur = con.cursor()
