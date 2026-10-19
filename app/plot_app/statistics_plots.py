@@ -268,6 +268,8 @@ order by new_date
         :return: tuple of list(dates), dict(group, list(value)),
                  with len(list(dates)) == len(list(value))
         """
+        if len(self._public_logs) == 0:
+            return [], {}
         interval = relativedelta(days=1)
         cur_interval_date = self._public_logs[0].date
         dates = [cur_interval_date]
