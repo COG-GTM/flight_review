@@ -72,10 +72,10 @@ def test_peak_downsample_columns_keeps_short_burst():
     image[5, 7777] = 9.0
     time = np.arange(10000)
     time_plot, image_plot, step = peak_downsample_columns(time, image, 1680)
-    assert step == 5
-    assert image_plot.shape == (129, 2000)
+    assert step == 6
+    assert image_plot.shape == (129, 1667)
     assert image_plot.max() == 9.0
-    assert len(time_plot) == 2000
+    assert len(time_plot) == 1667
 
 
 def test_indicator_text_and_visibility():
@@ -92,3 +92,39 @@ def test_indicator_text_and_visibility():
     indicator.update('a', 1)
     indicator.update('b', 1)
     assert not indicator.label.visible
+
+
+def test_peak_downsample_keeps_partial_last_block():
+    """ the remainder bins/columns must not be dropped """
+    values = np.zeros(6001)
+    values[6000] = 7.0
+    x_values = np.arange(6001.)
+    x_plot, y_plot, step = peak_downsample(x_values, values, 3000)
+    assert step == 3
+    assert len(y_plot) == 2001
+    assert y_plot[-1] == 7.0 and x_plot[-1] == 6000
+    image = np.zeros((4, 6001))
+    image[2, 6000] = 7.0
+    x_plot, image_plot, step = peak_downsample_columns(x_values, image, 3000)
+    assert step == 3
+    assert image_plot.shape == (4, 2001)
+    assert image_plot[2, -1] == 7.0 and x_plot[-1] == 6000
+
+
+def test_bucket_size_respects_budget():
+    """ ceil division: the result must never exceed the budget """
+    x_values = np.arange(4000.)
+    _, y_plot, step = peak_downsample(x_values, x_values, 2520)
+    assert step == 2 and len(y_plot) == 2000
+
+
+def test_minmax_unchanged_data_is_not_reported_as_downsampled():
+    """ two series whose per-bucket extrema together cover every sample """
+    timestamp = np.arange(3000)
+    pos = timestamp % 3  # bucket size is 3 for this budget
+    y1 = np.where(pos == 0, 1.0, 0.0)  # max at 0, (first) min at 1
+    y2 = np.where(pos == 2, 1.0, 0.0)  # max at 2, (first) min at 0
+    reduced, step = minmax_downsample(
+        {'timestamp': timestamp, 'y1': y1, 'y2': y2}, 'timestamp', 2520)
+    assert step == 1
+    assert len(reduced['timestamp']) == 3000

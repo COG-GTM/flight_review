@@ -8,10 +8,10 @@ from helper import print_timing
 
 def bucket_size_for(num_samples, max_num_data_points):
     """ number of consecutive samples that get reduced into one bucket so that
-        roughly max_num_data_points buckets remain. 1 means no reduction """
+        at most max_num_data_points buckets remain. 1 means no reduction """
     if num_samples <= max_num_data_points or max_num_data_points <= 0:
         return 1
-    return max(1, int(num_samples / max_num_data_points))
+    return max(1, int(np.ceil(num_samples / max_num_data_points)))
 
 
 def _bucket_extrema_indices(values, bucket_size):
@@ -62,6 +62,8 @@ def minmax_downsample(data, x_key, max_num_data_points):
             continue
         keep.append(_bucket_extrema_indices(values, bucket_size))
     keep = np.unique(np.concatenate(keep))
+    if len(keep) == num_samples:
+        return data, 1
     return {k: v[keep] for k, v in data.items()}, bucket_size
 
 
@@ -76,9 +78,11 @@ def peak_downsample(x_values, y_values, max_num_data_points):
     step_size = bucket_size_for(num_samples, max_num_data_points)
     if step_size <= 1:
         return x_values, y_values, 1
-    num_blocks = num_samples // step_size
-    blocks = np.asarray(y_values[:num_blocks * step_size]).reshape(num_blocks, step_size)
-    peak_idx = np.arange(num_blocks) * step_size + np.argmax(blocks, axis=1)
+    block_starts = np.arange(0, num_samples, step_size)
+    # pad the last (partial) block with -inf so that it is kept as well
+    padded = np.full(len(block_starts) * step_size, -np.inf)
+    padded[:num_samples] = y_values
+    peak_idx = block_starts + np.argmax(padded.reshape(len(block_starts), step_size), axis=1)
     return np.asarray(x_values)[peak_idx], np.asarray(y_values)[peak_idx], step_size
 
 
@@ -93,9 +97,10 @@ def peak_downsample_columns(x_values, image, max_num_data_points):
     step_size = bucket_size_for(num_columns, max_num_data_points)
     if step_size <= 1:
         return x_values, image, 1
-    num_blocks = num_columns // step_size
-    blocks = image[:, :num_blocks * step_size].reshape(image.shape[0], num_blocks, step_size)
-    return np.asarray(x_values)[:num_blocks * step_size:step_size], blocks.max(axis=2), step_size
+    block_starts = np.arange(0, num_columns, step_size)
+    # reduceat includes the last (partial) block
+    return (np.asarray(x_values)[block_starts],
+            np.maximum.reduceat(image, block_starts, axis=1), step_size)
 
 
 class DownsampleIndicator:
