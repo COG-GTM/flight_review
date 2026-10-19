@@ -117,7 +117,7 @@ def get_info_table_html(ulog, px4_ulog, db_data, vehicle_data, vtol_states):
         release_str_suffix = ')</small>'
     branch_info = ''
     if 'ver_sw_branch' in ulog.msg_info_dict:
-        branch_info = '<br> branch: '+ulog.msg_info_dict['ver_sw_branch']
+        branch_info = '<br> branch: '+escape(ulog.msg_info_dict['ver_sw_branch'])
     if 'ver_sw' in ulog.msg_info_dict:
         ver_sw = escape(ulog.msg_info_dict['ver_sw'])
         ver_sw_link = 'https://github.com/PX4/Firmware/commit/'+ver_sw
@@ -462,6 +462,10 @@ def get_changed_parameters(ulog, plot_width):
 
         if param_name.startswith('RC') or param_name.startswith('CAL_'):
             continue
+        if isinstance(param_value, bool) or not isinstance(param_value, (int, float)):
+            # only numeric parameters are valid; a crafted log can carry
+            # string-typed parameters that must never reach the HTML formatter
+            continue
 
         system_default = None
         airframe_default = None
@@ -514,7 +518,7 @@ def get_changed_parameters(ulog, plot_width):
         'colors': param_colors
         }
     source = ColumnDataSource(param_data)
-    formatter = HTMLTemplateFormatter(template='<font color="<%= colors %>"><%= value %></font>')
+    formatter = HTMLTemplateFormatter(template='<font color="<%- colors %>"><%- value %></font>')
     columns = [
         TableColumn(field="names", title="Name",
                     width=int(plot_width*0.2), sortable=False),

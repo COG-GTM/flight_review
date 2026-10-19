@@ -296,7 +296,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                         info['uuid'] = escape(ulog.msg_info_dict['sys_uuid'])
                     branch_info = ''
                     if 'ver_sw_branch' in ulog.msg_info_dict:
-                        branch_info = ' (branch: '+ulog.msg_info_dict['ver_sw_branch']+')'
+                        branch_info = ' (branch: '+escape(ulog.msg_info_dict['ver_sw_branch'])+')'
                     if 'ver_sw' in ulog.msg_info_dict:
                         ver_sw = escape(ulog.msg_info_dict['ver_sw'])
                         info['software'] = ver_sw + branch_info
