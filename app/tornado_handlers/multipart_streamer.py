@@ -146,6 +146,7 @@ class TemporaryFileStreamedPart(StreamedPart):
         super().__init__(streamer, headers)
         self.is_moved = False
         self.is_finalized = False
+        self.is_released = False
         self.f_out = tempfile.NamedTemporaryFile(dir=tmp_dir, delete=False)
 
     def feed(self, data):
@@ -185,9 +186,10 @@ class TemporaryFileStreamedPart(StreamedPart):
         method does nothing. Otherwise it closes the temporary file and deletes
         it from disk."""
         try:
-            if not self.is_moved:
+            if not self.is_moved and not self.is_released:
                 self.f_out.close()
                 os.unlink(self.f_out.name)
+                self.is_released = True
         finally:
             super().release()
 
@@ -370,7 +372,8 @@ class MultiPartStreamer:
                     idx = self.buf.find(self.SEP, pos)
                     if idx < 0:
                         # Not enough data yet for a complete header line
-                        if len(self.buf) - pos > self.MAX_HEADER_LINE_LENGTH:
+                        # (allow for a separator split across chunks)
+                        if len(self.buf) - pos > self.MAX_HEADER_LINE_LENGTH + self.L_SEP:
                             raise ParseError("Multipart header line too long")
                         self.buf = self.buf[pos:]
                         return

@@ -164,3 +164,38 @@ def test_param_regex_no_catastrophic_backtracking():
     start = time.perf_counter()
     streamer._parse_header(hdr)  # pylint: disable=protected-access
     assert time.perf_counter() - start < 1.0
+
+
+@pytest.mark.parametrize("hdr_len", [MultiPartStreamer.MAX_HEADER_LINE_LENGTH - 1,
+                                     MultiPartStreamer.MAX_HEADER_LINE_LENGTH])
+def test_max_length_header_accepted_with_split_crlf(hdr_len):
+    """a header at the cap is accepted even when CRLF is split across chunks"""
+    hdr = b'X-H: ' + b'v' * (hdr_len - 5)
+    assert len(hdr) == hdr_len
+    body = build_body([([hdr], b"x")])
+    # split right between \r and \n of the header's terminator
+    split = body.index(hdr) + len(hdr) + 1
+    streamer = MemoryStreamer(len(body))
+    streamer.data_received(body[:split])
+    streamer.data_received(body[split:])
+    streamer.data_complete()
+    assert len(streamer.parts[0].headers[0]["value"]) == hdr_len - 5
+
+
+def test_header_one_over_cap_rejected():
+    """one byte over the cap is rejected"""
+    hdr = b'X-H: ' + b'v' * (MultiPartStreamer.MAX_HEADER_LINE_LENGTH - 4)
+    with pytest.raises(ParseError):
+        feed(build_body([([hdr], b"x")]), 1)
+
+
+def test_temporary_part_release_is_idempotent(tmp_path):
+    """release() may be called twice (data_received failure + on_connection_close)"""
+    from tornado_handlers.multipart_streamer import TemporaryFileStreamedPart  # pylint: disable=import-outside-toplevel
+    part = TemporaryFileStreamedPart(None, [], tmp_dir=str(tmp_path))
+    part.feed(b"data")
+    part.finalize()
+    assert os.path.exists(part.f_out.name)
+    part.release()
+    assert not os.path.exists(part.f_out.name)
+    part.release()
