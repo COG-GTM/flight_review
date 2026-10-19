@@ -1,0 +1,1096 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:1a8a41af-7b09-4f41-ae9c-d232246e425d",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-19T17:12:55Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "browser_runtime_bom.py",
+          "version": "1.0",
+          "description": "hand-maintained inventory derived from app/plot_app/templates"
+        }
+      ]
+    },
+    "component": {
+      "bom-ref": "flight_review-browser-runtime",
+      "type": "application",
+      "name": "flight_review-browser-runtime",
+      "version": "aec3f49",
+      "supplier": {
+        "name": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)"
+      },
+      "description": "Client-side JavaScript/CSS loaded by the Flight Review web UI, from CDNs and vendored static files"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "browser-0-jquery",
+      "type": "library",
+      "name": "jquery",
+      "supplier": {
+        "name": "OpenJS Foundation"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/jquery@3.1.0",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "3.1.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.1.0.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-1-jquery",
+      "type": "library",
+      "name": "jquery",
+      "supplier": {
+        "name": "OpenJS Foundation"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/jquery@3.7.0",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/browse.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "present"
+        }
+      ],
+      "version": "3.7.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.3.4/datatables.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-2-datatables.net",
+      "type": "library",
+      "name": "datatables.net",
+      "supplier": {
+        "name": "SpryMedia Ltd"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/datatables.net@2.3.4",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/browse.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "present"
+        }
+      ],
+      "version": "2.3.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.3.4/datatables.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-3-datatables.net-bs5",
+      "type": "library",
+      "name": "datatables.net-bs5",
+      "supplier": {
+        "name": "SpryMedia Ltd"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/datatables.net-bs5@2.3.4",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/browse.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "2.3.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-4-bootstrap",
+      "type": "library",
+      "name": "bootstrap",
+      "supplier": {
+        "name": "The Bootstrap Authors"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bootstrap@5.3.8",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "5.3.8",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-5-bootstrap",
+      "type": "library",
+      "name": "bootstrap",
+      "supplier": {
+        "name": "The Bootstrap Authors"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bootstrap@5.3.8",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "(unreferenced copy)"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/bootstrap.min.js"
+        }
+      ],
+      "version": "5.3.8",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7b0f14895d69247fd88e93840489cfd47c55bd3fd27eb0a6c12a14cc5f492207"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-6-bootstrap",
+      "type": "library",
+      "name": "bootstrap",
+      "supplier": {
+        "name": "The Bootstrap Authors"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bootstrap@5.3.8",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "(unreferenced copy)"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/css/bootstrap.min.css"
+        }
+      ],
+      "version": "5.3.8",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a4c1356b1d98cfec0ad838dfbd919482ceb1e6ff4e3ae317e0c77d5f3071b7f1"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-7-bootswatch",
+      "type": "library",
+      "name": "bootswatch",
+      "supplier": {
+        "name": "Thomas Park"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bootswatch@5.3.8",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "5.3.8",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/yeti/bootstrap.min.css"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-8-chosen-js",
+      "type": "library",
+      "name": "chosen-js",
+      "supplier": {
+        "name": "Harvest"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/chosen-js@1.8.3",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "1.8.3",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.3/chosen.jquery.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-9-fortawesome-fontawesome-free",
+      "type": "library",
+      "name": "@fortawesome/fontawesome-free",
+      "supplier": {
+        "name": "Fonticons, Inc."
+      },
+      "licenses": [
+        {
+          "expression": "MIT AND CC-BY-4.0 AND OFL-1.1"
+        }
+      ],
+      "purl": "pkg:npm/%40fortawesome/fontawesome-free@6.5.1",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "6.5.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/fontawesome.min.css"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-10-leaflet",
+      "type": "library",
+      "name": "leaflet",
+      "supplier": {
+        "name": "Vladimir Agafonkin"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:npm/leaflet@1.3.4",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "present"
+        }
+      ],
+      "version": "1.3.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-11-leaflet-omnivore",
+      "type": "library",
+      "name": "leaflet-omnivore",
+      "supplier": {
+        "name": "Mapbox"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:npm/leaflet-omnivore@0.3.1",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "cdn"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:subresource_integrity",
+          "value": "absent"
+        }
+      ],
+      "version": "0.3.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-12-cesium",
+      "type": "library",
+      "name": "cesium",
+      "supplier": {
+        "name": "Cesium GS, Inc."
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/cesium@1.123.0",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/3d.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/cesium/Build/Cesium/Cesium.js"
+        }
+      ],
+      "version": "1.123.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a3b91a4782b7605a1054b2ed58297535e06c80ca13e412f8bea66807625eb0db"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-13-two.js",
+      "type": "library",
+      "name": "two.js",
+      "supplier": {
+        "name": "Jono Brandel"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/two.js@0.7.0",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/3d.html, app/plot_app/templates/radio_controller.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/two.min.js"
+        }
+      ],
+      "version": "0.7.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "15eb3e8f9a7da18146b70886646fc111fd85e262d2deccff0c1976d1ce6ebce6"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-14-lightbox2",
+      "type": "library",
+      "name": "lightbox2",
+      "supplier": {
+        "name": "Lokesh Dhakar"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/lightbox2@2.7.1",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "(unreferenced copy)"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/lightbox.min.js"
+        }
+      ],
+      "version": "2.7.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6c8abd074d9c4f8b738945503c713ca0f39eefd42421b7902cc3b6ac83d954c2"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-15-pace-js",
+      "type": "library",
+      "name": "pace-js",
+      "supplier": {
+        "name": "HubSpot"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/pace-js@1.0.2",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/pace.min.js"
+        }
+      ],
+      "version": "1.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "10fae43631849825b26b36f703f1298fe5bb426da907dbe77d7c3e5fa2c898f3"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-16-bootstrap-filestyle",
+      "type": "library",
+      "name": "bootstrap-filestyle",
+      "supplier": {
+        "name": "Markus Vinicius da Silva Lima"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bootstrap-filestyle@2.1.0",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/bootstrap-filestyle.min.js"
+        }
+      ],
+      "version": "2.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "df0a878975ed787f0259a796ac169109d2f3321f82d6dc5297f6832522922a49"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-17-popper.js",
+      "type": "library",
+      "name": "popper.js",
+      "supplier": {
+        "name": "Federico Zivolo"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/popper.js",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "(unreferenced copy; 1.x build, version string not embedded)"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:version_unverified",
+          "value": "true"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/js/popper.min.js"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5353f2b2a0fc4032834e44c622da9f519ca08b12252c849389fcf8fa60fe8c42"
+        }
+      ]
+    },
+    {
+      "bom-ref": "browser-18-animate.css",
+      "type": "library",
+      "name": "animate.css",
+      "supplier": {
+        "name": "Daniel Eden"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/animate.css",
+      "properties": [
+        {
+          "name": "flight_review:delivery",
+          "value": "vendored"
+        },
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html (version string not embedded)"
+        },
+        {
+          "name": "flight_review:language",
+          "value": "javascript/css"
+        },
+        {
+          "name": "flight_review:version_unverified",
+          "value": "true"
+        },
+        {
+          "name": "flight_review:path",
+          "value": "app/plot_app/static/css/animate.min.css"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3d1eedb6972fcfcaab179edfbabff2031d6a5cc14978916203aa52cd68b43881"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "bom-ref": "service-0",
+      "name": "Google Fonts",
+      "description": "Web font CSS (Play)",
+      "endpoints": [
+        "https://fonts.googleapis.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-1",
+      "name": "Microsoft Ajax CDN",
+      "description": "jQuery delivery",
+      "endpoints": [
+        "https://ajax.aspnetcdn.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/footer.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-2",
+      "name": "cdnjs (Cloudflare)",
+      "description": "chosen, font-awesome delivery",
+      "endpoints": [
+        "https://cdnjs.cloudflare.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-3",
+      "name": "jsDelivr",
+      "description": "bootstrap, bootswatch delivery",
+      "endpoints": [
+        "https://cdn.jsdelivr.net"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-4",
+      "name": "unpkg",
+      "description": "leaflet delivery",
+      "endpoints": [
+        "https://unpkg.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-5",
+      "name": "DataTables CDN",
+      "description": "datatables + jQuery 3.7.0 delivery",
+      "endpoints": [
+        "https://cdn.datatables.net"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/browse.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-6",
+      "name": "Mapbox CDN",
+      "description": "leaflet-omnivore delivery (protocol-relative URL in header.html)",
+      "endpoints": [
+        "https://api.tiles.mapbox.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/header.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-7",
+      "name": "Mapbox Tiles API",
+      "description": "Map imagery (when mapbox_api_access_token configured)",
+      "endpoints": [
+        "https://api.mapbox.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/index.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-8",
+      "name": "OpenStreetMap tile servers",
+      "description": "Map imagery (default)",
+      "endpoints": [
+        "https://tile.openstreetmap.org"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/index.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-9",
+      "name": "Cesium ion",
+      "description": "3D terrain/imagery (when cesium_api_key configured)",
+      "endpoints": [
+        "https://api.cesium.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/3d.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "service-10",
+      "name": "Bing Maps (via Cesium)",
+      "description": "Aerial imagery (when cesium_enable_bing_aerial)",
+      "endpoints": [
+        "https://dev.virtualearth.net"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public / unclassified map tiles and static assets"
+        }
+      ],
+      "properties": [
+        {
+          "name": "flight_review:loaded_by",
+          "value": "app/plot_app/templates/3d.html"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "flight_review-browser-runtime",
+      "dependsOn": [
+        "browser-0-jquery",
+        "browser-1-jquery",
+        "browser-2-datatables.net",
+        "browser-3-datatables.net-bs5",
+        "browser-4-bootstrap",
+        "browser-5-bootstrap",
+        "browser-6-bootstrap",
+        "browser-7-bootswatch",
+        "browser-8-chosen-js",
+        "browser-9-fortawesome-fontawesome-free",
+        "browser-10-leaflet",
+        "browser-11-leaflet-omnivore",
+        "browser-12-cesium",
+        "browser-13-two.js",
+        "browser-14-lightbox2",
+        "browser-15-pace-js",
+        "browser-16-bootstrap-filestyle",
+        "browser-17-popper.js",
+        "browser-18-animate.css",
+        "service-0",
+        "service-1",
+        "service-2",
+        "service-3",
+        "service-4",
+        "service-5",
+        "service-6",
+        "service-7",
+        "service-8",
+        "service-9",
+        "service-10"
+      ]
+    }
+  ]
+}

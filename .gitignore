@@ -25,3 +25,5 @@ data/certbot
 app/private_key/private_key.pem
 
 .claude/
+# SBOM package: rendered PDF bundle is a build output
+sbom/dist/

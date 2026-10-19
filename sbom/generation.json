@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-10-19T17:12:55Z",
+  "repository": "COG-GTM/flight_review",
+  "git_commit": "aec3f49a6ef5e230129046b8a5ed4533c4fb6e06",
+  "git_commit_short": "aec3f49",
+  "git_commit_date": "2026-10-19T17:07:07+00:00",
+  "supplier": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)",
+  "images_rebuilt": false,
+  "tools": {
+    "syft": "1.54.1",
+    "grype": "0.120.1",
+    "grype_db_built": "2026-10-19T06:39:15Z"
+  },
+  "images": {
+    "app": {
+      "ref": "flight_review-flight_review_app:latest",
+      "id": "sha256:4cc9b81d407bcecf37885134e9b4e102a8b8d14196605325b66bcfc2a3a19965",
+      "base": "ubuntu:noble",
+      "base_digest": "ubuntu@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac"
+    },
+    "nginx": {
+      "ref": "flight_review-nginx:latest",
+      "id": "sha256:ba75d9d08875f79d50d52bcdbfb0845dd0ef13fcf17420cdf705bd4beacf26a1",
+      "base": "nginx:latest",
+      "base_digest": "nginx@sha256:bc4cad49969aaf95eb4eecec5572846f86e59f1e8332aba36ed64b91aff8b724"
+    },
+    "certbot": {
+      "ref": "flight_review-certbot:latest",
+      "id": "sha256:3f89a9d6e6c9cd1b3e3df0a12d986e5058af607d7a2908566ee65a9c745a129d",
+      "base": "certbot/certbot:latest",
+      "base_digest": "certbot/certbot@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20"
+    }
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:8320962a-7e7b-44c2-ae51-e58b9110e3c5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-19T17:12:55Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "syft",
+          "version": "1.54.1",
+          "author": "anchore"
+        },
+        {
+          "type": "application",
+          "name": "grype",
+          "version": "0.120.1",
+          "author": "anchore"
+        },
+        {
+          "type": "application",
+          "name": "build_reports.py",
+          "version": "1.0"
+        }
+      ]
+    },
+    "supplier": {
+      "name": "PX4 Autopilot Project (upstream); COG-GTM (fork maintainer)"
+    },
+    "component": {
+      "bom-ref": "flight_review-system",
+      "type": "application",
+      "name": "flight_review",
+      "version": "aec3f49a6ef5e230129046b8a5ed4533c4fb6e06",
+      "description": "PX4 Flight Review web application (ULog upload, analysis, plotting) as deployed by docker-compose.prod.yml",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/COG-GTM/flight_review"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "sub-bom:flight_review-source",
+      "type": "file",
+      "name": "flight_review-source",
+      "version": "aec3f49",
+      "description": "Git working tree: declared Python requirements, CI workflow actions, vendored npm metadata",
+      "externalReferences": [
+        {
+          "type": "bom",
+          "url": "cyclonedx/flight_review-source.cdx.json",
+          "comment": "CycloneDX serialNumber urn:uuid:aadd1024-3bf4-42e7-bac6-29726dd9b48e; SPDX twin at spdx/flight_review-source.spdx.json",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "515a32a44b74819960ea0a1173cfdc3901407e8005f1a89460adf37946b4bdf8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "sub-bom:flight_review-app-image",
+      "type": "container",
+      "name": "flight_review-app-image",
+      "version": "aec3f49",
+      "description": "Tornado/Bokeh application container (ubuntu:noble + apt + pip), the primary deployable",
+      "externalReferences": [
+        {
+          "type": "bom",
+          "url": "cyclonedx/flight_review-app-image.cdx.json",
+          "comment": "CycloneDX serialNumber urn:uuid:54e6ccf9-06c6-44d4-bb43-15128217b740; SPDX twin at spdx/flight_review-app-image.spdx.json",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "96537ddc023fb0e891ce657d7126b889300b28abf015ff668c622b023af52c37"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "sub-bom:flight_review-nginx-image",
+      "type": "container",
+      "name": "flight_review-nginx-image",
+      "version": "aec3f49",
+      "description": "Reverse proxy / TLS terminator container (nginx:latest)",
+      "externalReferences": [
+        {
+          "type": "bom",
+          "url": "cyclonedx/flight_review-nginx-image.cdx.json",
+          "comment": "CycloneDX serialNumber urn:uuid:2a6f9703-8df8-4b65-aea8-96b525bcdf29; SPDX twin at spdx/flight_review-nginx-image.spdx.json",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "42a35563f8c010f24304c7538f5ff37a68ad8b2798c8a87335fbebdc1b1589d5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "sub-bom:flight_review-certbot-image",
+      "type": "container",
+      "name": "flight_review-certbot-image",
+      "version": "aec3f49",
+      "description": "ACME certificate renewal sidecar (certbot/certbot), production profile only",
+      "externalReferences": [
+        {
+          "type": "bom",
+          "url": "cyclonedx/flight_review-certbot-image.cdx.json",
+          "comment": "CycloneDX serialNumber urn:uuid:60b53729-0db1-4950-a238-0545246a8100; SPDX twin at spdx/flight_review-certbot-image.spdx.json",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "2aeec94c5cdac9a33bdd6e8fc393c367f6b60f80ab866094007b1ff585ce094f"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "bom-ref": "sub-bom:flight_review-browser-runtime",
+      "type": "application",
+      "name": "flight_review-browser-runtime",
+      "version": "aec3f49",
+      "description": "Client-side JS/CSS fetched from CDNs or served from app/plot_app/static, plus external services",
+      "externalReferences": [
+        {
+          "type": "bom",
+          "url": "cyclonedx/flight_review-browser-runtime.cdx.json",
+          "comment": "CycloneDX serialNumber urn:uuid:1a8a41af-7b09-4f41-ae9c-d232246e425d",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "ef7de7f337d744ca83dbc33b929a9431d70f43aadc00c320a322899837c18577"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "flight_review-system",
+      "dependsOn": [
+        "sub-bom:flight_review-source",
+        "sub-bom:flight_review-app-image",
+        "sub-bom:flight_review-nginx-image",
+        "sub-bom:flight_review-certbot-image",
+        "sub-bom:flight_review-browser-runtime"
+      ]
+    }
+  ]
+}
