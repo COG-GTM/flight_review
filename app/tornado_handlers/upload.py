@@ -101,7 +101,19 @@ class UploadHandler(TornadoRequestHandlerBase):
     def data_received(self, chunk):
         """ called whenever new data is received """
         if self.multipart_streamer:
-            self.multipart_streamer.data_received(chunk)
+            try:
+                self.multipart_streamer.data_received(chunk)
+            except Exception:
+                # post() never runs after a parse failure, so free the
+                # temporary files of the parts received so far here
+                self.multipart_streamer.release_parts()
+                raise
+
+    def on_connection_close(self):
+        """ client went away mid-upload: free temporary files """
+        if self.multipart_streamer:
+            self.multipart_streamer.release_parts()
+        super().on_connection_close()
 
     def get(self, *args, **kwargs):
         """ GET request callback """
