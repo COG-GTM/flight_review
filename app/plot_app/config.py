@@ -41,6 +41,7 @@ __CESIUM_API_KEY = _conf.get('general', 'cesium_api_key')
 __CESIUM_ENABLE_BING_AERIAL = _conf.get('general', 'cesium_enable_bing_aerial')
 __LOG_CACHE_SIZE = int(_conf.get('general', 'log_cache_size'))
 __LOG_LOAD_TIMEOUT = int(_conf.get('general', 'log_load_timeout'))
+__STATISTICS_MAX_MAJOR_VERSION = int(_conf.get('general', 'statistics_max_major_version'))
 __DB_FILENAME_CUSTOM = _conf.get('general', 'db_filename')
 
 __STORAGE_PATH = _conf.get('general', 'storage_path')
@@ -175,6 +176,11 @@ def get_log_cache_size():
 def get_log_load_timeout():
     """ get maximum seconds to spend loading a single log (0 = disabled) """
     return __LOG_LOAD_TIMEOUT
+
+def get_statistics_max_major_version():
+    """ get the largest firmware major version included in the public statistics
+    (0 = no upper bound) """
+    return __STATISTICS_MAX_MAJOR_VERSION
 
 def debug_print_timing():
     """ print timing information? """
