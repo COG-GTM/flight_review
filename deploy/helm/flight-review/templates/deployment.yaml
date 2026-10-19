@@ -22,8 +22,11 @@ spec:
       annotations:
         {{- if not .Values.secrets.existingSecret }}
         checksum/config: {{ include (print $.Template.BasePath "/secret-config.yaml") . | sha256sum }}
-        {{- else }}
-        {{- /* subPath mounts never refresh; hash the external Secret (when the API is reachable) so `helm upgrade` rolls the pod after a rotation. */}}
+        {{- else if .Values.secrets.existingSecretVersion }}
+        {{- /* subPath mounts never refresh; bump this value after rotating the external Secret to roll the pod. */}}
+        checksum/config: {{ .Values.secrets.existingSecretVersion | toString | sha256sum }}
+        {{- else if .Values.secrets.lookupExistingSecret }}
+        {{- /* Opt-in: needs Secret read access for the Helm deployer. */}}
         {{- with (lookup "v1" "Secret" .Release.Namespace .Values.secrets.existingSecret) }}
         checksum/config: {{ .data | toJson | sha256sum }}
         {{- end }}

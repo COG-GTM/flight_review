@@ -50,11 +50,14 @@ config:
 # values below, or point existingSecret at a Secret that already holds a
 # `config_user.ini` key (recommended in accredited environments).
 secrets:
-  # When set, the chart hashes the external Secret at install/upgrade time
-  # (Helm `lookup`) into the pod's checksum/config annotation so a rotated
-  # Secret rolls the pod on the next `helm upgrade`. Mounted via subPath, so
-  # a Secret edit alone does NOT reach a running pod — upgrade or restart.
+  # Mounted via subPath, so a Secret edit alone does NOT reach a running pod.
+  # Bump existingSecretVersion (any string) after rotating the Secret so the
+  # next `helm upgrade` rolls the pod; or set lookupExistingSecret: true to
+  # hash the live Secret instead (requires the Helm deployer to be able to
+  # read Secrets in the namespace — opt-in for that reason).
   existingSecret: ""
+  existingSecretVersion: ""
+  lookupExistingSecret: false
   smtpPassword: ""
   cesiumApiKey: ""
   mapboxApiAccessToken: ""
