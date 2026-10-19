@@ -51,27 +51,34 @@ if GET_arguments is not None and 'stats' in GET_arguments:
     plots.append(column(div_info))
 
     div = Div(text="<br/><h3>Public Logs</h3>")
-    div_info = Div(text="Total Flight Hours: %.1f"%
-                   statistics.total_public_flight_duration())
-    plots.append(column([div, div_info]))
+    div_info = Div(text="Total Flight Hours (last %i days, selected logs only): %.1f" %
+                   (statistics.public_logs_window_days(),
+                    statistics.total_public_flight_duration()))
+    div_selection = Div(text=statistics.public_logs_selection_html())
+    plots.append(column([div, div_info, div_selection]))
 
-    p = statistics.plot_public_board_hours_statistics()
-    plots.append(p)
+    if statistics.num_public_logs_included() == 0:
+        div = Div(text="<p><em>No public logs match the selection rules above, so no "
+                  "per-group statistics can be shown.</em></p>")
+        plots.append(column(div))
+    else:
+        p = statistics.plot_public_board_hours_statistics()
+        plots.append(p)
 
-    p = statistics.plot_public_board_flights_statistics()
-    plots.append(p)
+        p = statistics.plot_public_board_flights_statistics()
+        plots.append(p)
 
-    p = statistics.plot_public_unique_boards_statistics()
-    plots.append(p)
+        p = statistics.plot_public_unique_boards_statistics()
+        plots.append(p)
 
-    p = statistics.plot_public_airframe_statistics()
-    plots.append(p)
+        p = statistics.plot_public_airframe_statistics()
+        plots.append(p)
 
-    p = statistics.plot_public_version_flights_statistics()
-    plots.append(p)
+        p = statistics.plot_public_version_flights_statistics()
+        plots.append(p)
 
-    p = statistics.plot_public_flight_mode_statistics()
-    plots.append(p)
+        p = statistics.plot_public_flight_mode_statistics()
+        plots.append(p)
 
     print_timing("Plotting Stats", start_time)
 

@@ -11,7 +11,7 @@ from bokeh.models import (
     )
 
 from plotting import TOOLS, ACTIVE_SCROLL_TOOLS
-from config import get_db_connection
+from config import get_db_connection, get_statistics_max_major_version
 from helper import get_airframe_data, flight_modes_table
 
 
@@ -74,6 +74,22 @@ class StatisticsPlots:
     Class to generate statistics plots from Database entries
     """
 
+    # Selection rules for the public log statistics. Every log that is dropped
+    # by one of them is counted in _exclusion_counts, so the page can disclose
+    # the filtering (see public_logs_selection_html()).
+    PUBLIC_LOGS_WINDOW_DAYS = 90
+    MAX_LOG_DURATION_DAYS = 7
+    MIN_MAJOR_VERSION = 1
+    MAX_NUM_GROUPS = 20
+
+    EXCLUSION_NO_GENERATED_DATA = 'no generated log data available'
+    EXCLUSION_VERSION_UNSET = 'firmware version not set'
+    EXCLUSION_VERSION_ZERO = 'firmware version v0.0.0'
+    EXCLUSION_DURATION = 'flight duration above %i days (probably bogus timestamps)' % \
+        MAX_LOG_DURATION_DAYS
+    EXCLUSION_AUTOSTART = 'no airframe (SYS_AUTOSTART = 0)'
+    EXCLUSION_VERSION_UNPARSABLE = 'firmware version not parsable'
+
     def __init__(self, plot_config, verbose_output=False):
 
         self._config = plot_config
@@ -85,6 +101,25 @@ class StatisticsPlots:
         self._num_flight_hours_total = 0
 
         self._public_logs = []
+        self._num_public_logs_candidates = 0
+        self._max_major_version = get_statistics_max_major_version()
+        if self._max_major_version > 0:
+            exclusion_version_range = 'firmware major version outside %i..%i' % \
+                (self.MIN_MAJOR_VERSION, self._max_major_version)
+        else:
+            exclusion_version_range = 'firmware major version below %i' % \
+                self.MIN_MAJOR_VERSION
+        self._exclusion_version_range = exclusion_version_range
+        # ordered by the sequence the rules are applied
+        self._exclusion_counts = {
+            self.EXCLUSION_NO_GENERATED_DATA: 0,
+            self.EXCLUSION_VERSION_ZERO: 0,
+            self.EXCLUSION_DURATION: 0,
+            self.EXCLUSION_VERSION_UNSET: 0,
+            self.EXCLUSION_AUTOSTART: 0,
+            exclusion_version_range: 0,
+            self.EXCLUSION_VERSION_UNPARSABLE: 0,
+            }
 
         # read from the DB
         con = get_db_connection()
@@ -128,8 +163,10 @@ order by new_date
             # Get all public logs within the last few months
             cur.execute("select Id, Date, Source, Public, Rating from Logs where Public = 1 "
                         "and Source != 'CI' and "
-                        "Date > date('now', '-90 day') order by Date")
+                        "Date > date('now', ?) order by Date",
+                        ['-%i day' % self.PUBLIC_LOGS_WINDOW_DAYS])
             db_tuples = cur.fetchall()
+            self._num_public_logs_candidates = len(db_tuples)
             for db_tuple in db_tuples:
                 log = _Log(db_tuple)
 
@@ -137,42 +174,37 @@ order by new_date
                 db_tuple = cur.fetchone()
 
                 if db_tuple is None:
-                    if self._verbose_output:
-                        print("Error: no generated data")
+                    self._exclude_log(log, self.EXCLUSION_NO_GENERATED_DATA)
                     continue
 
                 log.set_generated(db_tuple)
 
                 # filter bogus entries
                 if log.sw_version == 'v0.0.0':
-                    if self._verbose_output:
-                        print('Warning: %s with version=v0.0.0' % log.log_id)
+                    self._exclude_log(log, self.EXCLUSION_VERSION_ZERO)
                     continue
-                if log.duration > 7*24*3600: # probably bogus timestamp(s)
-                    if self._verbose_output:
-                        print('Warning: %s with very high duration %i' %
-                              (log.log_id, log.duration))
+                if log.duration > self.MAX_LOG_DURATION_DAYS*24*3600:
+                    self._exclude_log(log, self.EXCLUSION_DURATION,
+                                      'duration=%i' % log.duration)
                     continue
 
                 if log.sw_version == '':
                     # FIXME: does that still occur and if so why?
-                    if self._verbose_output:
-                        print('Warning: %s version not set' % log.log_id)
+                    self._exclude_log(log, self.EXCLUSION_VERSION_UNSET)
                     continue
 
                 if log.autostart_id == 0:
-                    if self._verbose_output:
-                        print('Warning: %s with autostart_id=0' % log.log_id)
+                    self._exclude_log(log, self.EXCLUSION_AUTOSTART)
                     continue
 
                 try:
                     ver_major = int(log.sw_version[1:].split('.')[0])
-                    if ver_major >= 3 or ver_major == 0:
-                        if self._verbose_output:
-                            print('Warning: %s with large/small version %s' %
-                                  (log.log_id, log.sw_version))
-                        continue
-                except:
+                except ValueError:
+                    self._exclude_log(log, self.EXCLUSION_VERSION_UNPARSABLE, log.sw_version)
+                    continue
+                if ver_major < self.MIN_MAJOR_VERSION or \
+                        0 < self._max_major_version < ver_major:
+                    self._exclude_log(log, self._exclusion_version_range, log.sw_version)
                     continue
 
                 self._public_logs.append(log)
@@ -182,6 +214,52 @@ order by new_date
         finally:
             con.close()
 
+    def _exclude_log(self, log, reason, details=''):
+        """ record that a public log is excluded from the statistics """
+        self._exclusion_counts[reason] += 1
+        if self._verbose_output:
+            print('Warning: excluding log %s from statistics: %s %s' %
+                  (log.log_id, reason, details))
+
+    def public_logs_window_days(self):
+        """ get the time window (in days) of the public log statistics """
+        return self.PUBLIC_LOGS_WINDOW_DAYS
+
+    def num_public_logs_candidates(self):
+        """ get the number of public, non-CI logs within the time window,
+        before applying the selection rules """
+        return self._num_public_logs_candidates
+
+    def num_public_logs_included(self):
+        """ get the number of public logs the statistics are computed from """
+        return len(self._public_logs)
+
+    def public_logs_exclusion_counts(self):
+        """ get a dict of (exclusion rule description -> number of excluded logs),
+        in the order the rules are applied """
+        return dict(self._exclusion_counts)
+
+    def public_logs_selection_html(self):
+        """
+        get an HTML description of how the logs for the public statistics were
+        selected: time window, CI exclusion, each exclusion rule with the number
+        of logs it removed, and the grouping into 'Others'
+        """
+        num_excluded = sum(self._exclusion_counts.values())
+        html = ('<p>These statistics are computed from %i of the %i public, non-CI logs '
+                'uploaded within the last %i days. %i logs were excluded by the following '
+                'rules:</p>' % (self.num_public_logs_included(),
+                                self._num_public_logs_candidates,
+                                self.PUBLIC_LOGS_WINDOW_DAYS, num_excluded))
+        html += '<ul>'
+        for reason, count in self._exclusion_counts.items():
+            html += '<li>%s: %i</li>' % (reason, count)
+        html += '</ul>'
+        html += ('<p>Logs uploaded as private or from Continuous Integration (CI) are not '
+                 'included. Per-group plots show the %i largest groups; all remaining groups '
+                 'are merged into &quot;Others&quot;.</p>' % self.MAX_NUM_GROUPS)
+        return html
+
 
     def get_data_for_plotting(self, groups_value_getter, empty_value=0,
                               value_adder=lambda a, b: a+b):
@@ -190,6 +268,8 @@ order by new_date
         :return: tuple of list(dates), dict(group, list(value)),
                  with len(list(dates)) == len(list(value))
         """
+        if len(self._public_logs) == 0:
+            return [], {}
         interval = relativedelta(days=1)
         cur_interval_date = self._public_logs[0].date
         dates = [cur_interval_date]
@@ -388,13 +468,15 @@ order by new_date
         all_groups = sorted(groups.keys(), key=lambda group: groups[group][-1])
 
         # Limit number of groups
-        max_num_groups = 20
+        max_num_groups = self.MAX_NUM_GROUPS
+        num_others = 0
         if len(all_groups) > max_num_groups:
+            num_others = len(all_groups)-max_num_groups+1
             others = np.array(groups[all_groups[0]])
-            for i in range(1, len(all_groups)-max_num_groups+1):
+            for i in range(1, num_others):
                 others += groups[all_groups[i]]
             groups['__others__'] = others
-            all_groups = ['__others__'] + all_groups[len(all_groups)-max_num_groups+1:]
+            all_groups = ['__others__'] + all_groups[num_others:]
 
         colors = []
         palette = list(viridis(10))
@@ -406,7 +488,9 @@ order by new_date
                       x_axis_type='datetime',
                       y_axis_label='')
 
-        legend_labels = ['Others' if l == '__others__' else label_callback(l) for l in all_groups]
+        others_label = 'Others (%i groups merged)' % num_others
+        legend_labels = [others_label if l == '__others__' else label_callback(l)
+                         for l in all_groups]
 
         # Directly use the displayed label as data keys. It's the easiest way to ensure the hover
         # tool shows the right label, with the slight risk of creating a collision if 2 labels are
