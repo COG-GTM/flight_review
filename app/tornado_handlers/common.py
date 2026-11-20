@@ -115,20 +115,29 @@ def get_generated_db_data_from_log(log_id, con, cur):
             print('Failed to load log file: '+str(e))
             return None
     else: # get it from the DB
-        db_data_gen = DBDataGenerated()
-        db_data_gen.duration_s = db_tuple[1]
-        db_data_gen.mav_type = db_tuple[2]
-        db_data_gen.estimator = db_tuple[3]
-        db_data_gen.sys_autostart_id = db_tuple[4]
-        db_data_gen.sys_hw = db_tuple[5]
-        db_data_gen.ver_sw = db_tuple[6]
-        db_data_gen.num_logged_errors = db_tuple[7]
-        db_data_gen.num_logged_warnings = db_tuple[8]
-        db_data_gen.flight_modes = \
-            {int(x) for x in db_tuple[9].split(',') if len(x) > 0}
-        db_data_gen.ver_sw_release = db_tuple[10]
-        db_data_gen.vehicle_uuid = db_tuple[11]
-        db_data_gen.flight_mode_durations = \
-            [tuple(map(int, x.split(':'))) for x in db_tuple[12].split(',') if len(x) > 0]
+        db_data_gen = db_data_generated_from_tuple(db_tuple)
     return db_data_gen
 
+
+def db_data_generated_from_tuple(db_tuple):
+    """
+    create a DBDataGenerated object from a LogsGenerated table row
+    :param db_tuple: row of 'select * from LogsGenerated'
+    :return: DBDataGenerated
+    """
+    db_data_gen = DBDataGenerated()
+    db_data_gen.duration_s = db_tuple[1]
+    db_data_gen.mav_type = db_tuple[2]
+    db_data_gen.estimator = db_tuple[3]
+    db_data_gen.sys_autostart_id = db_tuple[4]
+    db_data_gen.sys_hw = db_tuple[5]
+    db_data_gen.ver_sw = db_tuple[6]
+    db_data_gen.num_logged_errors = db_tuple[7]
+    db_data_gen.num_logged_warnings = db_tuple[8]
+    db_data_gen.flight_modes = \
+        {int(x) for x in db_tuple[9].split(',') if len(x) > 0}
+    db_data_gen.ver_sw_release = db_tuple[10]
+    db_data_gen.vehicle_uuid = db_tuple[11]
+    db_data_gen.flight_mode_durations = \
+        [tuple(map(int, x.split(':'))) for x in db_tuple[12].split(',') if len(x) > 0]
+    return db_data_gen

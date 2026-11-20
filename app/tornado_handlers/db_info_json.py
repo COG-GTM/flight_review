@@ -15,7 +15,7 @@ from helper import get_airframe_data
 
 
 #pylint: disable=relative-beyond-top-level
-from .common import get_generated_db_data_from_log
+from .common import get_generated_db_data_from_log, db_data_generated_from_tuple
 
 #pylint: disable=abstract-method
 
@@ -36,8 +36,12 @@ class DBInfoHandler(tornado.web.RequestHandler):
         db_tuples = cur.fetchall()
         vehicle_table = {db_tuple[0]: db_tuple[1] for db_tuple in db_tuples}
 
-        cur.execute('SELECT Id, Date, Description, WindSpeed, Rating, VideoUrl, ErrorLabels, '
-                    'Source, Feedback, Type FROM Logs WHERE Public = 1 AND NOT Source = "CI"')
+        # join LogsGenerated in the same query instead of one lookup per log
+        cur.execute('SELECT Logs.Id, Logs.Date, Logs.Description, Logs.WindSpeed, '
+                    'Logs.Rating, Logs.VideoUrl, Logs.ErrorLabels, Logs.Source, '
+                    'Logs.Feedback, Logs.Type, LogsGenerated.* '
+                    'FROM Logs LEFT JOIN LogsGenerated ON Logs.Id = LogsGenerated.Id '
+                    'WHERE Logs.Public = 1 AND NOT Logs.Source = "CI"')
         # need to fetch all here, because we will do more SQL calls while
         # iterating (having multiple cursor's does not seem to work)
         db_tuples = cur.fetchall()
@@ -58,7 +62,11 @@ class DBInfoHandler(tornado.web.RequestHandler):
             db_data.type = db_tuple[9]
             jsondict.update(db_data.to_json_dict())
 
-            db_data_gen = get_generated_db_data_from_log(log_id, con, cur)
+            generated_tuple = db_tuple[10:]
+            if generated_tuple[0] is not None:
+                db_data_gen = db_data_generated_from_tuple(generated_tuple)
+            else:
+                db_data_gen = get_generated_db_data_from_log(log_id, con, cur)
             if db_data_gen is None:
                 continue
 
